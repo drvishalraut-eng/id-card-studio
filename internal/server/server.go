@@ -27,6 +27,7 @@ func New(authManager *auth.Manager) *Server {
 func (s *Server) Handler() http.Handler {
 	api := http.NewServeMux()
 	s.registerAuthRoutes(api)
+	s.registerUserRoutes(api)
 
 	return limitBody(auth.RequireXRequestedWith(api))
 }

@@ -4,7 +4,7 @@
 1. [x] Check prerequisites, run `git init` (if needed), extract Appendix A into `reference/index.html` and Appendix B into `web/assets/brand/`, and add `.gitignore` (`dist/`, `data/`, `config.json`), `go.mod` and the skeleton layout.
 2. [x] Config loading and the portable data folder, with atomic JSON storage and tests.
 3. [x] Auth: PIN hashing, first-run setup, login and logout, sessions, lockout, role middleware, and tests.
-4. [ ] Users API (list, add, reset PIN, enable/disable, last-admin guard), with tests.
+4. [x] Users API (list, add, reset PIN, enable/disable, last-admin guard), with tests.
 5. [ ] Activity log: write, and query with filters and pagination.
 6. [ ] Presence tracking with reverse-DNS caching, and a server-info endpoint.
 7. [ ] Clients API with SVG validation and sanitising, and the Helios seed. Tests.
@@ -36,6 +36,9 @@
 - Username matching is case-insensitive (`strings.EqualFold`) across lookup, create and update. Reason: spec makes client codes explicitly case-insensitive and is silent on usernames; treating them the same way avoids "ada" vs "Ada" duplicate-account confusion, a plausible real-world typo.
 - `/api/setup` takes `{name, username, pin}` with no `confirm_pin` field — confirmation re-entry is a client-side-only UI check. Reason: the spec only requires confirm-PIN on the Users-page add-user form (task 4); keeping the setup endpoint's shape identical to `auth.Manager.Setup` avoids a mismatched, speculative field.
 - `internal/server.Server.Handler()` returns routes un-prefixed (`GET /setup`, `POST /login`, …); `main.go` mounts it at `/api/` via `http.StripPrefix`. Reason: keeps the server package's route table independent of where it's mounted, and matches the `web/assets/` mount done the same way.
+- The spec's "the last active admin can't be disabled or demoted" guard is only wired to the Disable action. Reason: the Users page spec lists exactly two actions per row — Reset PIN and Disable/Enable — with no role-change action anywhere in the UI; adding an unused "demote" endpoint now would be speculative code with no caller.
+- `ResetPIN` also clears `failed_attempts` and `locked_until`. Reason: an admin resetting a PIN is already intervening on the account; leaving it locked after that would be a confusing dead end with no way to unlock it otherwise (there's no separate "unlock" action in the spec).
+- The Users-list response adds a computed `status` field (`"active" | "disabled" | "locked"`) not present in the stored `User` struct. Reason: the spec's Users table has a "status" column but doesn't define its values; deriving it from `disabled`/`locked_until` is the simplest option and keeps the raw lockout timestamp out of the API response.
 
 ## Blockers
 (none yet)
