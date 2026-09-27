@@ -10,6 +10,7 @@ import (
 
 	"idcardstudio/internal/activity"
 	"idcardstudio/internal/auth"
+	"idcardstudio/internal/clients"
 	"idcardstudio/internal/presence"
 )
 
@@ -29,13 +30,14 @@ type Server struct {
 	Auth     *auth.Manager
 	Activity *activity.Log
 	Presence *presence.Manager
+	Clients  *clients.Manager
 	Info     Info
 }
 
-// New returns a Server backed by the given auth manager, activity log and
-// presence tracker.
-func New(authManager *auth.Manager, activityLog *activity.Log, presenceManager *presence.Manager, info Info) *Server {
-	return &Server{Auth: authManager, Activity: activityLog, Presence: presenceManager, Info: info}
+// New returns a Server backed by the given auth manager, activity log,
+// presence tracker and clients manager.
+func New(authManager *auth.Manager, activityLog *activity.Log, presenceManager *presence.Manager, clientsManager *clients.Manager, info Info) *Server {
+	return &Server{Auth: authManager, Activity: activityLog, Presence: presenceManager, Clients: clientsManager, Info: info}
 }
 
 // Handler builds the complete API mux, with the shared body-size limit and
@@ -46,6 +48,7 @@ func (s *Server) Handler() http.Handler {
 	s.registerUserRoutes(api)
 	s.registerActivityRoutes(api)
 	s.registerPresenceRoutes(api)
+	s.registerClientRoutes(api)
 
 	return limitBody(auth.RequireXRequestedWith(api))
 }

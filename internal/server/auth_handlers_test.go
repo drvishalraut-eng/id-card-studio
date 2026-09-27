@@ -12,6 +12,7 @@ import (
 
 	"idcardstudio/internal/activity"
 	"idcardstudio/internal/auth"
+	"idcardstudio/internal/clients"
 	"idcardstudio/internal/presence"
 )
 
@@ -22,6 +23,7 @@ func newTestServer(t *testing.T) *Server {
 		auth.NewManager(filepath.Join(dir, "users.json")),
 		activity.New(filepath.Join(dir, "activity.jsonl")),
 		presence.New(),
+		clients.NewManager(filepath.Join(dir, "clients.json")),
 		Info{StartedAt: time.Now(), Port: 8080, DataDir: dir, ExportDir: filepath.Join(dir, "exports")},
 	)
 }

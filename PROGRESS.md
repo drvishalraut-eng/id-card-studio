@@ -7,7 +7,7 @@
 4. [x] Users API (list, add, reset PIN, enable/disable, last-admin guard), with tests.
 5. [x] Activity log: write, and query with filters and pagination.
 6. [x] Presence tracking with reverse-DNS caching, and a server-info endpoint.
-7. [ ] Clients API with SVG validation and sanitising, and the Helios seed. Tests.
+7. [x] Clients API with SVG validation and sanitising, and the Helios seed. Tests.
 8. [ ] Employees API (list, upsert, bulk import, map client) and the photo upload endpoint.
 9. [ ] Export endpoint that saves PDFs into month folders and records exports. Tests.
 10. [ ] `scripts/vendor.*`, fetching and committing the pinned libraries and fonts.
@@ -46,6 +46,11 @@
 - `presence.Manager.List()` keys connected users by username (one row per user), so two tabs open for the same account collapse into a single entry showing whichever tab's heartbeat landed most recently. Reason: spec's panel mockup is "one row per user," not per tab/session, and the spec is silent on multi-tab behavior — last-heartbeat-wins is the simplest option.
 - `internal/netutil.LANURLs` enumerates non-loopback IPv4 addresses for the server-info endpoint's `urls` field now, ahead of task 11's console startup printing. Reason: the server-info endpoint needs "URL" today per spec; task 11 will reuse this exact helper rather than duplicating it.
 - `GET /api/server-info` and `POST /api/presence` are `RequireAuth` (any signed-in user), matching Activity's reasoning — the "Under the hood" panel is part of the Wizard, not gated by role.
+- **Important for task 13 (card renderer):** the seeded Helios client's `logo` field is *only* the sunburst mark SVG (self-contained, viewBox `0 0 160 160`), reproducing reference/index.html's `<symbol id="helios-mark">`. The "HELIOS MATERIAL"/"HANDLING" wordmark next to it in the reference is plain CSS-styled HTML text (`.helios b`/`.helios span`), not SVG — it is NOT baked into the logo field, since doing so would require either hand-drawn letterform paths (not given anywhere in the spec) or `<text>` elements (which the spec's own SVG validation rules forbid). The card renderer must special-case the client whose `code` is `Helios` (case-insensitively) and reproduce the reference's exact `.helios` HTML+CSS lockup (icon + letter-spaced wordmark) rather than treating it as a generic uploaded-logo image — exactly how reference/index.html itself special-cases Helios via its own hardcoded `HELIOS` JS constant, separate from the generic per-client logo path.
+- Client `id` is a slugified version of `name` (lowercase, non-alphanumeric runs collapsed to `-`), de-duplicated with a `-2`, `-3`, … suffix on collision. Reason: spec gives no id format; this mirrors the reference mockup's own `key(cli.name.value).replace(/[^a-z0-9]+/g,'-')` and keeps ids human-readable in `data/clients.json` and `data/logos/`.
+- SVG validation walks the token stream with `encoding/xml` (not a regex over raw text) and explicitly rejects any `<!DOCTYPE`/`<!ENTITY` up front. Reason: a proper parse can't be fooled by comments/CDATA the way a naive substring search could, and blocking DTDs/entities closes off XXE/entity-expansion risk entirely rather than trusting `encoding/xml`'s defaults.
+- An `href`/`*:href` is allowed only when it is a bare `#fragment` reference; anything else (`http(s)://`, `//`, `data:`, etc.) is rejected as "external." Reason: the spec explicitly bans "external hrefs" but the reference mockup's own approved SVGs use internal `<use href="#helios-mark">` — a same-document fragment isn't external, so blocking only non-fragment hrefs satisfies the spec without breaking that legitimate pattern.
+- `Client.Update` treats an empty `logo` string as "keep the existing logo" rather than "clear the logo." Reason: the Step 1 edit form re-populates from the existing client and only sends new logo bytes when the admin actually uploads/pastes a replacement; a client can never be left with no logo through this endpoint, matching "fit the logo inside the logo box" implying a logo always exists once a client is created.
 
 ## Blockers
 (none yet)
