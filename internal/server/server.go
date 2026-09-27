@@ -12,6 +12,7 @@ import (
 	"idcardstudio/internal/auth"
 	"idcardstudio/internal/clients"
 	"idcardstudio/internal/employees"
+	"idcardstudio/internal/export"
 	"idcardstudio/internal/presence"
 )
 
@@ -35,15 +36,16 @@ type Server struct {
 	Presence  *presence.Manager
 	Clients   *clients.Manager
 	Employees *employees.Manager
+	Export    *export.Manager
 	Info      Info
 }
 
 // New returns a Server backed by the given auth manager, activity log,
-// presence tracker, clients manager and employees manager.
-func New(authManager *auth.Manager, activityLog *activity.Log, presenceManager *presence.Manager, clientsManager *clients.Manager, employeesManager *employees.Manager, info Info) *Server {
+// presence tracker, clients manager, employees manager and export manager.
+func New(authManager *auth.Manager, activityLog *activity.Log, presenceManager *presence.Manager, clientsManager *clients.Manager, employeesManager *employees.Manager, exportManager *export.Manager, info Info) *Server {
 	return &Server{
 		Auth: authManager, Activity: activityLog, Presence: presenceManager,
-		Clients: clientsManager, Employees: employeesManager, Info: info,
+		Clients: clientsManager, Employees: employeesManager, Export: exportManager, Info: info,
 	}
 }
 
@@ -57,6 +59,7 @@ func (s *Server) Handler() http.Handler {
 	s.registerPresenceRoutes(api)
 	s.registerClientRoutes(api)
 	s.registerEmployeeRoutes(api)
+	s.registerExportRoutes(api)
 
 	return limitBody(auth.RequireXRequestedWith(api))
 }

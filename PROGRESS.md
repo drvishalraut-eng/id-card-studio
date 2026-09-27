@@ -9,7 +9,7 @@
 6. [x] Presence tracking with reverse-DNS caching, and a server-info endpoint.
 7. [x] Clients API with SVG validation and sanitising, and the Helios seed. Tests.
 8. [x] Employees API (list, upsert, bulk import, map client) and the photo upload endpoint.
-9. [ ] Export endpoint that saves PDFs into month folders and records exports. Tests.
+9. [x] Export endpoint that saves PDFs into month folders and records exports. Tests.
 10. [ ] `scripts/vendor.*`, fetching and committing the pinned libraries and fonts.
 11. [ ] Frontend shell: embed, first-run setup, login, top bar, routing, API client and presence heartbeat.
 12. [ ] Users page and Activity page.
@@ -57,6 +57,9 @@
 - There is no separate "crop only" endpoint. `POST /employees/{id}/photo` takes the photo file *and* `zoom`/`x`/`y` together in one multipart request, committed atomically. Reason: spec's crop UI (drag/sliders) operates on a client-held, not-yet-uploaded `File` with a local preview; only "Save & next" should touch the server, and "Cancel... keeps the old photo" is then trivially true because nothing was ever sent — no server-side staging/undo needed.
 - Photo upload does a minimal JPEG magic-byte check (`0xFFD8FF`) before writing to `<employee_id>.jpg`. Reason: the destination filename is server-controlled (not derived from the uploaded file), so this isn't a traversal defense — it's a cheap guard against an arbitrary file silently masquerading as a card photo later served/rendered as one.
 - Uploading a new photo always resets `crop` to whatever zoom/x/y the same request carries (there is no "keep old crop, just replace photo" path). Reason: a new photo's framing rarely matches the old photo's crop values; forcing the client to always send fresh crop values with the new photo is simpler than adding a "preserve" flag nobody asked for.
+- `POST /api/export` takes ONE rendered PDF per call (multipart `employee_id` + `pdf`), not a batch. Reason: the spec's own UI description ("Rendering 12 / 40…") already implies the browser loops one card at a time; one-PDF-per-call sidesteps the ambiguity of correlating N files with N employee_ids in a single multipart request, and matches how the browser already has to sequence renders anyway. The ZIP archive for "several cards" is purely a client-side `JSZip` bundle for the user's own download (task 18) — the server never sees or builds one.
+- The month folder (`<Mon YYYY>`) is derived from each employee's own `join_date`, not from "today." Reason: spec's Step 4 filter is explicitly "month of the join date," and folder-per-cohort only makes sense keyed the same way; using the export date instead would scatter one join-month's cards across many folders depending on when each was (re-)exported.
+- Export does a minimal PDF magic-byte check (`%PDF`) before writing, mirroring the photo upload's JPEG check — same reasoning: the destination path is server-controlled, so this guards against a wrong/empty blob being silently saved as a card PDF, not against path traversal.
 
 ## Blockers
 (none yet)
