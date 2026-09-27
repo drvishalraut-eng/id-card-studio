@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
 	"log"
 	"net/http"
@@ -11,10 +12,23 @@ import (
 	"syscall"
 	"time"
 
+	"idcardstudio/internal/config"
 	"idcardstudio/web"
 )
 
 func main() {
+	appDir, err := config.AppDir()
+	if err != nil {
+		log.Fatalf("find application directory: %v", err)
+	}
+	cfg, err := config.Load(appDir)
+	if err != nil {
+		log.Fatalf("load config.json: %v", err)
+	}
+	if _, err := config.EnsureDataDir(appDir); err != nil {
+		log.Fatalf("prepare data folder: %v", err)
+	}
+
 	assets, err := fs.Sub(web.Assets, "assets")
 	if err != nil {
 		log.Fatalf("load embedded assets: %v", err)
@@ -24,7 +38,7 @@ func main() {
 	mux.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.FS(assets))))
 
 	srv := &http.Server{
-		Addr:    "0.0.0.0:8080",
+		Addr:    fmt.Sprintf("0.0.0.0:%d", cfg.Port),
 		Handler: mux,
 	}
 

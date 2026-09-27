@@ -2,7 +2,7 @@
 
 ## Tasks
 1. [x] Check prerequisites, run `git init` (if needed), extract Appendix A into `reference/index.html` and Appendix B into `web/assets/brand/`, and add `.gitignore` (`dist/`, `data/`, `config.json`), `go.mod` and the skeleton layout.
-2. [ ] Config loading and the portable data folder, with atomic JSON storage and tests.
+2. [x] Config loading and the portable data folder, with atomic JSON storage and tests.
 3. [ ] Auth: PIN hashing, first-run setup, login and logout, sessions, lockout, role middleware, and tests.
 4. [ ] Users API (list, add, reset PIN, enable/disable, last-admin guard), with tests.
 5. [ ] Activity log: write, and query with filters and pagination.
@@ -28,6 +28,8 @@
 - Go module name is `idcardstudio` (root `main.go`, no `cmd/` subdir) with `web` as a small embed-only package (`web.Assets`). Reason: simplest layout that supports `go:embed` of `web/assets` and later `web/static`/`web/vendor` without an extra indirection layer.
 - Removed the two loose `wcf-logo-*.svg` files that were sitting at the repo root (they carried embedded C2PA metadata blobs, not byte-identical to Appendix B) and wrote the exact Appendix B markup to `web/assets/brand/` instead. Reason: spec requires the brand files saved "exactly as given"; the root copies weren't.
 - `go.mod` declares `go 1.24` (the spec's minimum) even though the installed toolchain is 1.27. Reason: keep the minimum-version contract explicit; the installed newer toolchain still satisfies it.
+- `internal/storage.Store[T]` is a generic mutex-protected JSON file wrapper with `Load`/`Save`/`Update`; `Update` holds the lock across the whole read-modify-write cycle so two concurrent API handlers can never race. Reason: the spec requires every write atomic *and* mutex-protected because several users work at once — a bare `Save` alone doesn't protect a read-then-write sequence done by the caller.
+- Printing LAN URLs and auto-opening the browser is deferred to the frontend-shell task (11), not wired into today's minimal `main.go`. Reason: there's no UI to open yet; `main.go` for now just binds `0.0.0.0:<configured port>` and serves embedded assets.
 
 ## Blockers
 (none yet)
