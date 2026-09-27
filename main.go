@@ -9,10 +9,13 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
+	"idcardstudio/internal/auth"
 	"idcardstudio/internal/config"
+	"idcardstudio/internal/server"
 	"idcardstudio/web"
 )
 
@@ -25,9 +28,13 @@ func main() {
 	if err != nil {
 		log.Fatalf("load config.json: %v", err)
 	}
-	if _, err := config.EnsureDataDir(appDir); err != nil {
+	data, err := config.EnsureDataDir(appDir)
+	if err != nil {
 		log.Fatalf("prepare data folder: %v", err)
 	}
+
+	authManager := auth.NewManager(filepath.Join(data.Root, "users.json"))
+	api := server.New(authManager)
 
 	assets, err := fs.Sub(web.Assets, "assets")
 	if err != nil {
@@ -36,6 +43,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.FS(assets))))
+	mux.Handle("/api/", http.StripPrefix("/api", api.Handler()))
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf("0.0.0.0:%d", cfg.Port),

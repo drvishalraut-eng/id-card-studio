@@ -3,7 +3,7 @@
 ## Tasks
 1. [x] Check prerequisites, run `git init` (if needed), extract Appendix A into `reference/index.html` and Appendix B into `web/assets/brand/`, and add `.gitignore` (`dist/`, `data/`, `config.json`), `go.mod` and the skeleton layout.
 2. [x] Config loading and the portable data folder, with atomic JSON storage and tests.
-3. [ ] Auth: PIN hashing, first-run setup, login and logout, sessions, lockout, role middleware, and tests.
+3. [x] Auth: PIN hashing, first-run setup, login and logout, sessions, lockout, role middleware, and tests.
 4. [ ] Users API (list, add, reset PIN, enable/disable, last-admin guard), with tests.
 5. [ ] Activity log: write, and query with filters and pagination.
 6. [ ] Presence tracking with reverse-DNS caching, and a server-info endpoint.
@@ -30,6 +30,12 @@
 - `go.mod` declares `go 1.24` (the spec's minimum) even though the installed toolchain is 1.27. Reason: keep the minimum-version contract explicit; the installed newer toolchain still satisfies it.
 - `internal/storage.Store[T]` is a generic mutex-protected JSON file wrapper with `Load`/`Save`/`Update`; `Update` holds the lock across the whole read-modify-write cycle so two concurrent API handlers can never race. Reason: the spec requires every write atomic *and* mutex-protected because several users work at once — a bare `Save` alone doesn't protect a read-then-write sequence done by the caller.
 - Printing LAN URLs and auto-opening the browser is deferred to the frontend-shell task (11), not wired into today's minimal `main.go`. Reason: there's no UI to open yet; `main.go` for now just binds `0.0.0.0:<configured port>` and serves embedded assets.
+- `crypto/pbkdf2` is a real Go 1.24+ stdlib package (confirmed with `go doc crypto/pbkdf2` against the installed 1.27 toolchain) — used directly, no third-party crypto module needed.
+- Sessions live in memory only (`auth.SessionManager`), not persisted to `data/`. Reason: simplest option that fits the spec's 12-hour cookie requirement; a restart just signs everyone out, which is acceptable for a LAN tool restarted rarely.
+- Lockout resets `failed_attempts` to 0 the moment the 5th failure trips `locked_until`, rather than continuing to count during the lock. Reason: simplest state machine that still satisfies "after 5 failed attempts, lock for 5 minutes" — attempts made *during* the lock are already rejected outright by the `locked_until` check before the PIN is even compared, so they can't further increment anything.
+- Username matching is case-insensitive (`strings.EqualFold`) across lookup, create and update. Reason: spec makes client codes explicitly case-insensitive and is silent on usernames; treating them the same way avoids "ada" vs "Ada" duplicate-account confusion, a plausible real-world typo.
+- `/api/setup` takes `{name, username, pin}` with no `confirm_pin` field — confirmation re-entry is a client-side-only UI check. Reason: the spec only requires confirm-PIN on the Users-page add-user form (task 4); keeping the setup endpoint's shape identical to `auth.Manager.Setup` avoids a mismatched, speculative field.
+- `internal/server.Server.Handler()` returns routes un-prefixed (`GET /setup`, `POST /login`, …); `main.go` mounts it at `/api/` via `http.StripPrefix`. Reason: keeps the server package's route table independent of where it's mounted, and matches the `web/assets/` mount done the same way.
 
 ## Blockers
 (none yet)
