@@ -8,9 +8,11 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"idcardstudio/internal/activity"
 	"idcardstudio/internal/auth"
+	"idcardstudio/internal/presence"
 )
 
 func newTestServer(t *testing.T) *Server {
@@ -19,6 +21,8 @@ func newTestServer(t *testing.T) *Server {
 	return New(
 		auth.NewManager(filepath.Join(dir, "users.json")),
 		activity.New(filepath.Join(dir, "activity.jsonl")),
+		presence.New(),
+		Info{StartedAt: time.Now(), Port: 8080, DataDir: dir, ExportDir: filepath.Join(dir, "exports")},
 	)
 }
 

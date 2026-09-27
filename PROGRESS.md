@@ -6,7 +6,7 @@
 3. [x] Auth: PIN hashing, first-run setup, login and logout, sessions, lockout, role middleware, and tests.
 4. [x] Users API (list, add, reset PIN, enable/disable, last-admin guard), with tests.
 5. [x] Activity log: write, and query with filters and pagination.
-6. [ ] Presence tracking with reverse-DNS caching, and a server-info endpoint.
+6. [x] Presence tracking with reverse-DNS caching, and a server-info endpoint.
 7. [ ] Clients API with SVG validation and sanitising, and the Helios seed. Tests.
 8. [ ] Employees API (list, upsert, bulk import, map client) and the photo upload endpoint.
 9. [ ] Export endpoint that saves PDFs into month folders and records exports. Tests.
@@ -42,6 +42,10 @@
 - `resolveHost` (in `internal/server/netinfo.go`) does a plain, uncached `net.LookupAddr` with a 500ms timeout for every activity-log write. Reason: task 5 (activity log) comes before task 6 (presence's cached reverse-DNS); activity writes are infrequent (sign-ins, admin actions) so the extra latency is acceptable, and task 6 can later share or replace this with the cached lookup used for presence's every-15-seconds heartbeat, which really does need caching.
 - `GET /api/activity` is available to any signed-in user (`RequireAuth`), not Admin-only. Reason: the top bar spec marks only the Users tab "(Admin only)"; Activity is listed alongside Wizard with no such qualifier.
 - The Activity page's `from`/`to` filters take plain `YYYY-MM-DD` dates (parsed as UTC, `to` extended to end-of-day) rather than full timestamps. Reason: spec describes the filter as "date range," and the fixed English month-list precedent elsewhere in the spec favors plain calendar dates over timezone-sensitive timestamps.
+- `internal/presence.Manager` now owns the 10-minute reverse-DNS cache, and `Server.logAction` (activity log, task 5) was switched from its own uncached lookup to `Presence.ResolveHost`. Reason: this was flagged as a planned follow-up when task 5 landed — one cache is simpler than two, and activity writes benefit from the same 10-minute cache presence's heartbeat needs.
+- `presence.Manager.List()` keys connected users by username (one row per user), so two tabs open for the same account collapse into a single entry showing whichever tab's heartbeat landed most recently. Reason: spec's panel mockup is "one row per user," not per tab/session, and the spec is silent on multi-tab behavior — last-heartbeat-wins is the simplest option.
+- `internal/netutil.LANURLs` enumerates non-loopback IPv4 addresses for the server-info endpoint's `urls` field now, ahead of task 11's console startup printing. Reason: the server-info endpoint needs "URL" today per spec; task 11 will reuse this exact helper rather than duplicating it.
+- `GET /api/server-info` and `POST /api/presence` are `RequireAuth` (any signed-in user), matching Activity's reasoning — the "Under the hood" panel is part of the Wizard, not gated by role.
 
 ## Blockers
 (none yet)

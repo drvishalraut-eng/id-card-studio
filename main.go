@@ -16,6 +16,7 @@ import (
 	"idcardstudio/internal/activity"
 	"idcardstudio/internal/auth"
 	"idcardstudio/internal/config"
+	"idcardstudio/internal/presence"
 	"idcardstudio/internal/server"
 	"idcardstudio/web"
 )
@@ -36,7 +37,14 @@ func main() {
 
 	authManager := auth.NewManager(filepath.Join(data.Root, "users.json"))
 	activityLog := activity.New(filepath.Join(data.Root, "activity.jsonl"))
-	api := server.New(authManager, activityLog)
+	presenceManager := presence.New()
+	info := server.Info{
+		StartedAt: time.Now(),
+		Port:      cfg.Port,
+		DataDir:   data.Root,
+		ExportDir: cfg.ExportDir,
+	}
+	api := server.New(authManager, activityLog, presenceManager, info)
 
 	assets, err := fs.Sub(web.Assets, "assets")
 	if err != nil {

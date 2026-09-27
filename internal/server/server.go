@@ -6,23 +6,36 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
 	"idcardstudio/internal/activity"
 	"idcardstudio/internal/auth"
+	"idcardstudio/internal/presence"
 )
 
 // MaxRequestBody caps every API request body, per the spec's 10 MB limit.
 const MaxRequestBody = 10 << 20
 
+// Info is the static server details shown in the "Under the hood" panel.
+type Info struct {
+	StartedAt time.Time
+	Port      int
+	DataDir   string
+	ExportDir string
+}
+
 // Server holds the dependencies shared by all API handlers.
 type Server struct {
 	Auth     *auth.Manager
 	Activity *activity.Log
+	Presence *presence.Manager
+	Info     Info
 }
 
-// New returns a Server backed by the given auth manager and activity log.
-func New(authManager *auth.Manager, activityLog *activity.Log) *Server {
-	return &Server{Auth: authManager, Activity: activityLog}
+// New returns a Server backed by the given auth manager, activity log and
+// presence tracker.
+func New(authManager *auth.Manager, activityLog *activity.Log, presenceManager *presence.Manager, info Info) *Server {
+	return &Server{Auth: authManager, Activity: activityLog, Presence: presenceManager, Info: info}
 }
 
 // Handler builds the complete API mux, with the shared body-size limit and
@@ -32,20 +45,20 @@ func (s *Server) Handler() http.Handler {
 	s.registerAuthRoutes(api)
 	s.registerUserRoutes(api)
 	s.registerActivityRoutes(api)
+	s.registerPresenceRoutes(api)
 
 	return limitBody(auth.RequireXRequestedWith(api))
 }
 
 // logAction records one activity entry, resolving the caller's IP and
-// hostname from r. Failures are swallowed (logged to stderr via the
-// standard logger would be noisy here; the action itself already
-// succeeded or failed independently of the audit trail).
+// (cached) hostname from r. A write failure only reaches the server log:
+// the action it's recording has already succeeded or failed on its own.
 func (s *Server) logAction(r *http.Request, username, action, target string) {
 	ip := clientIP(r)
 	entry := activity.Entry{
 		Username: username,
 		IP:       ip,
-		Host:     resolveHost(ip),
+		Host:     s.Presence.ResolveHost(ip),
 		Action:   action,
 		Target:   target,
 	}
