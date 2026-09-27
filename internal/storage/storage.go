@@ -81,14 +81,20 @@ func (s *Store[T]) save(v T) error {
 	return WriteAtomic(s.path, v)
 }
 
-// WriteAtomic marshals v as indented JSON and writes it to path atomically:
-// a temp file in the same directory is written and fsynced, then renamed
-// over the target, so readers never observe a partial file.
+// WriteAtomic marshals v as indented JSON and writes it to path atomically.
 func WriteAtomic(path string, v any) error {
 	data, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal %s: %w", path, err)
 	}
+	return WriteFileAtomic(path, data)
+}
+
+// WriteFileAtomic writes data to path atomically: a temp file in the same
+// directory is written and fsynced, then renamed over the target, so
+// readers never observe a partial file. Used directly for non-JSON files
+// such as uploaded photos.
+func WriteFileAtomic(path string, data []byte) error {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("create directory %s: %w", dir, err)

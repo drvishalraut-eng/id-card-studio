@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"os"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -76,6 +77,21 @@ func TestConcurrentUpdatesDoNotLoseWrites(t *testing.T) {
 	}
 	if got.Count != goroutines {
 		t.Fatalf("got Count=%d, want %d", got.Count, goroutines)
+	}
+}
+
+func TestWriteFileAtomicRoundTrips(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "photo.jpg")
+	want := []byte{0xFF, 0xD8, 0xFF, 0xE0, 0x01, 0x02}
+	if err := WriteFileAtomic(path, want); err != nil {
+		t.Fatalf("WriteFileAtomic: %v", err)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	if string(got) != string(want) {
+		t.Fatalf("got %v, want %v", got, want)
 	}
 }
 

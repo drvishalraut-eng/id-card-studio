@@ -17,6 +17,7 @@ import (
 	"idcardstudio/internal/auth"
 	"idcardstudio/internal/clients"
 	"idcardstudio/internal/config"
+	"idcardstudio/internal/employees"
 	"idcardstudio/internal/presence"
 	"idcardstudio/internal/server"
 	"idcardstudio/web"
@@ -43,13 +44,15 @@ func main() {
 	if err := clientsManager.SeedHelios(); err != nil {
 		log.Fatalf("seed Helios client: %v", err)
 	}
+	employeesManager := employees.NewManager(filepath.Join(data.Root, "employees.json"))
 	info := server.Info{
 		StartedAt: time.Now(),
 		Port:      cfg.Port,
 		DataDir:   data.Root,
 		ExportDir: cfg.ExportDir,
+		PhotosDir: data.Photos,
 	}
-	api := server.New(authManager, activityLog, presenceManager, clientsManager, info)
+	api := server.New(authManager, activityLog, presenceManager, clientsManager, employeesManager, info)
 
 	assets, err := fs.Sub(web.Assets, "assets")
 	if err != nil {

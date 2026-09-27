@@ -11,33 +11,40 @@ import (
 	"idcardstudio/internal/activity"
 	"idcardstudio/internal/auth"
 	"idcardstudio/internal/clients"
+	"idcardstudio/internal/employees"
 	"idcardstudio/internal/presence"
 )
 
 // MaxRequestBody caps every API request body, per the spec's 10 MB limit.
 const MaxRequestBody = 10 << 20
 
-// Info is the static server details shown in the "Under the hood" panel.
+// Info is the static server details shown in the "Under the hood" panel,
+// plus the photo storage folder used by the employees photo-upload handler.
 type Info struct {
 	StartedAt time.Time
 	Port      int
 	DataDir   string
 	ExportDir string
+	PhotosDir string
 }
 
 // Server holds the dependencies shared by all API handlers.
 type Server struct {
-	Auth     *auth.Manager
-	Activity *activity.Log
-	Presence *presence.Manager
-	Clients  *clients.Manager
-	Info     Info
+	Auth      *auth.Manager
+	Activity  *activity.Log
+	Presence  *presence.Manager
+	Clients   *clients.Manager
+	Employees *employees.Manager
+	Info      Info
 }
 
 // New returns a Server backed by the given auth manager, activity log,
-// presence tracker and clients manager.
-func New(authManager *auth.Manager, activityLog *activity.Log, presenceManager *presence.Manager, clientsManager *clients.Manager, info Info) *Server {
-	return &Server{Auth: authManager, Activity: activityLog, Presence: presenceManager, Clients: clientsManager, Info: info}
+// presence tracker, clients manager and employees manager.
+func New(authManager *auth.Manager, activityLog *activity.Log, presenceManager *presence.Manager, clientsManager *clients.Manager, employeesManager *employees.Manager, info Info) *Server {
+	return &Server{
+		Auth: authManager, Activity: activityLog, Presence: presenceManager,
+		Clients: clientsManager, Employees: employeesManager, Info: info,
+	}
 }
 
 // Handler builds the complete API mux, with the shared body-size limit and
@@ -49,6 +56,7 @@ func (s *Server) Handler() http.Handler {
 	s.registerActivityRoutes(api)
 	s.registerPresenceRoutes(api)
 	s.registerClientRoutes(api)
+	s.registerEmployeeRoutes(api)
 
 	return limitBody(auth.RequireXRequestedWith(api))
 }
