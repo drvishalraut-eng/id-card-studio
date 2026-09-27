@@ -9,12 +9,17 @@ import (
 	"strings"
 	"testing"
 
+	"idcardstudio/internal/activity"
 	"idcardstudio/internal/auth"
 )
 
 func newTestServer(t *testing.T) *Server {
 	t.Helper()
-	return New(auth.NewManager(filepath.Join(t.TempDir(), "users.json")))
+	dir := t.TempDir()
+	return New(
+		auth.NewManager(filepath.Join(dir, "users.json")),
+		activity.New(filepath.Join(dir, "activity.jsonl")),
+	)
 }
 
 func doJSON(t *testing.T, h http.Handler, method, path string, body any, cookies ...*http.Cookie) *httptest.ResponseRecorder {

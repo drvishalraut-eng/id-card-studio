@@ -4,8 +4,10 @@ package server
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
+	"idcardstudio/internal/activity"
 	"idcardstudio/internal/auth"
 )
 
@@ -14,12 +16,13 @@ const MaxRequestBody = 10 << 20
 
 // Server holds the dependencies shared by all API handlers.
 type Server struct {
-	Auth *auth.Manager
+	Auth     *auth.Manager
+	Activity *activity.Log
 }
 
-// New returns a Server backed by the given auth manager.
-func New(authManager *auth.Manager) *Server {
-	return &Server{Auth: authManager}
+// New returns a Server backed by the given auth manager and activity log.
+func New(authManager *auth.Manager, activityLog *activity.Log) *Server {
+	return &Server{Auth: authManager, Activity: activityLog}
 }
 
 // Handler builds the complete API mux, with the shared body-size limit and
@@ -28,8 +31,27 @@ func (s *Server) Handler() http.Handler {
 	api := http.NewServeMux()
 	s.registerAuthRoutes(api)
 	s.registerUserRoutes(api)
+	s.registerActivityRoutes(api)
 
 	return limitBody(auth.RequireXRequestedWith(api))
+}
+
+// logAction records one activity entry, resolving the caller's IP and
+// hostname from r. Failures are swallowed (logged to stderr via the
+// standard logger would be noisy here; the action itself already
+// succeeded or failed independently of the audit trail).
+func (s *Server) logAction(r *http.Request, username, action, target string) {
+	ip := clientIP(r)
+	entry := activity.Entry{
+		Username: username,
+		IP:       ip,
+		Host:     resolveHost(ip),
+		Action:   action,
+		Target:   target,
+	}
+	if err := s.Activity.Write(entry); err != nil {
+		log.Printf("activity log: %v", err)
+	}
 }
 
 func limitBody(next http.Handler) http.Handler {

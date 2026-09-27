@@ -5,7 +5,7 @@
 2. [x] Config loading and the portable data folder, with atomic JSON storage and tests.
 3. [x] Auth: PIN hashing, first-run setup, login and logout, sessions, lockout, role middleware, and tests.
 4. [x] Users API (list, add, reset PIN, enable/disable, last-admin guard), with tests.
-5. [ ] Activity log: write, and query with filters and pagination.
+5. [x] Activity log: write, and query with filters and pagination.
 6. [ ] Presence tracking with reverse-DNS caching, and a server-info endpoint.
 7. [ ] Clients API with SVG validation and sanitising, and the Helios seed. Tests.
 8. [ ] Employees API (list, upsert, bulk import, map client) and the photo upload endpoint.
@@ -39,6 +39,9 @@
 - The spec's "the last active admin can't be disabled or demoted" guard is only wired to the Disable action. Reason: the Users page spec lists exactly two actions per row — Reset PIN and Disable/Enable — with no role-change action anywhere in the UI; adding an unused "demote" endpoint now would be speculative code with no caller.
 - `ResetPIN` also clears `failed_attempts` and `locked_until`. Reason: an admin resetting a PIN is already intervening on the account; leaving it locked after that would be a confusing dead end with no way to unlock it otherwise (there's no separate "unlock" action in the spec).
 - The Users-list response adds a computed `status` field (`"active" | "disabled" | "locked"`) not present in the stored `User` struct. Reason: the spec's Users table has a "status" column but doesn't define its values; deriving it from `disabled`/`locked_until` is the simplest option and keeps the raw lockout timestamp out of the API response.
+- `resolveHost` (in `internal/server/netinfo.go`) does a plain, uncached `net.LookupAddr` with a 500ms timeout for every activity-log write. Reason: task 5 (activity log) comes before task 6 (presence's cached reverse-DNS); activity writes are infrequent (sign-ins, admin actions) so the extra latency is acceptable, and task 6 can later share or replace this with the cached lookup used for presence's every-15-seconds heartbeat, which really does need caching.
+- `GET /api/activity` is available to any signed-in user (`RequireAuth`), not Admin-only. Reason: the top bar spec marks only the Users tab "(Admin only)"; Activity is listed alongside Wizard with no such qualifier.
+- The Activity page's `from`/`to` filters take plain `YYYY-MM-DD` dates (parsed as UTC, `to` extended to end-of-day) rather than full timestamps. Reason: spec describes the filter as "date range," and the fixed English month-list precedent elsewhere in the spec favors plain calendar dates over timezone-sensitive timestamps.
 
 ## Blockers
 (none yet)

@@ -73,6 +73,9 @@ func (s *Server) handleAddUser(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	if actor, ok := auth.UserFromContext(r.Context()); ok {
+		s.logAction(r, actor.Username, "user_added", u.Username)
+	}
 	writeJSON(w, http.StatusCreated, toUserListItem(u))
 }
 
@@ -98,10 +101,17 @@ func (s *Server) handleResetPIN(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	if actor, ok := auth.UserFromContext(r.Context()); ok {
+		s.logAction(r, actor.Username, "user_pin_reset", u.Username)
+	}
 	writeJSON(w, http.StatusOK, toUserListItem(u))
 }
 
 func (s *Server) handleSetDisabled(disabled bool) http.HandlerFunc {
+	action := "user_enabled"
+	if disabled {
+		action = "user_disabled"
+	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		username := r.PathValue("username")
 		u, err := s.Auth.SetDisabled(username, disabled)
@@ -112,6 +122,9 @@ func (s *Server) handleSetDisabled(disabled bool) http.HandlerFunc {
 			}
 			writeError(w, status, err.Error())
 			return
+		}
+		if actor, ok := auth.UserFromContext(r.Context()); ok {
+			s.logAction(r, actor.Username, action, u.Username)
 		}
 		writeJSON(w, http.StatusOK, toUserListItem(u))
 	}

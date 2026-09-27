@@ -63,6 +63,8 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "account was created but sign-in failed: "+err.Error())
 		return
 	}
+	s.logAction(r, u.Username, "user_added", u.Username)
+	s.logAction(r, u.Username, "sign_in", u.Username)
 	auth.SetSessionCookie(w, token)
 	writeJSON(w, http.StatusCreated, toUserResponse(u))
 }
@@ -88,19 +90,25 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusForbidden, err.Error())
 		case errors.Is(err, auth.ErrInvalidCredentials):
 			writeError(w, http.StatusUnauthorized, err.Error())
+			s.logAction(r, req.Username, "sign_in_failed", req.Username)
 		default:
 			writeError(w, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
 
+	s.logAction(r, u.Username, "sign_in", u.Username)
 	auth.SetSessionCookie(w, token)
 	writeJSON(w, http.StatusOK, toUserResponse(u))
 }
 
 func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
+	u, hadSession := s.Auth.CurrentUser(r)
 	if cookie, err := r.Cookie(auth.CookieName); err == nil {
 		s.Auth.Logout(cookie.Value)
+	}
+	if hadSession {
+		s.logAction(r, u.Username, "sign_out", u.Username)
 	}
 	auth.ClearSessionCookie(w)
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})

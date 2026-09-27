@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"idcardstudio/internal/activity"
 	"idcardstudio/internal/auth"
 	"idcardstudio/internal/config"
 	"idcardstudio/internal/server"
@@ -34,7 +35,8 @@ func main() {
 	}
 
 	authManager := auth.NewManager(filepath.Join(data.Root, "users.json"))
-	api := server.New(authManager)
+	activityLog := activity.New(filepath.Join(data.Root, "activity.jsonl"))
+	api := server.New(authManager, activityLog)
 
 	assets, err := fs.Sub(web.Assets, "assets")
 	if err != nil {
