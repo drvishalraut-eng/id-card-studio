@@ -1,0 +1,20 @@
+/* Vendored, offline replacement for the Google Fonts <link> in
+   reference/index.html. Both files are variable fonts covering their full
+   weight range, so one physical file per family serves every declared
+   weight below (matching how Google's own CSS does it). */
+
+@font-face {
+  font-family: "Montserrat";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("montserrat.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Josefin Sans";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("josefin-sans.woff2") format("woff2");
+}

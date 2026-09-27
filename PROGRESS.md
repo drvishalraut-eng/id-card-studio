@@ -10,7 +10,7 @@
 7. [x] Clients API with SVG validation and sanitising, and the Helios seed. Tests.
 8. [x] Employees API (list, upsert, bulk import, map client) and the photo upload endpoint.
 9. [x] Export endpoint that saves PDFs into month folders and records exports. Tests.
-10. [ ] `scripts/vendor.*`, fetching and committing the pinned libraries and fonts.
+10. [x] `scripts/vendor.*`, fetching and committing the pinned libraries and fonts.
 11. [ ] Frontend shell: embed, first-run setup, login, top bar, routing, API client and presence heartbeat.
 12. [ ] Users page and Activity page.
 13. [ ] Card renderer module, matching the reference exactly, with the live preview and navigation.
@@ -60,6 +60,9 @@
 - `POST /api/export` takes ONE rendered PDF per call (multipart `employee_id` + `pdf`), not a batch. Reason: the spec's own UI description ("Rendering 12 / 40…") already implies the browser loops one card at a time; one-PDF-per-call sidesteps the ambiguity of correlating N files with N employee_ids in a single multipart request, and matches how the browser already has to sequence renders anyway. The ZIP archive for "several cards" is purely a client-side `JSZip` bundle for the user's own download (task 18) — the server never sees or builds one.
 - The month folder (`<Mon YYYY>`) is derived from each employee's own `join_date`, not from "today." Reason: spec's Step 4 filter is explicitly "month of the join date," and folder-per-cohort only makes sense keyed the same way; using the export date instead would scatter one join-month's cards across many folders depending on when each was (re-)exported.
 - Export does a minimal PDF magic-byte check (`%PDF`) before writing, mirroring the photo upload's JPEG check — same reasoning: the destination path is server-controlled, so this guards against a wrong/empty blob being silently saved as a card PDF, not against path traversal.
+- Pinned versions: html-to-image 1.11.13, jsPDF 4.2.1, JSZip 3.10.2, SheetJS (xlsx) 0.18.5 — each fetched from jsDelivr's npm mirror (`cdn.jsdelivr.net/npm/<pkg>@<version>/dist/...`) and checksum-verified by `scripts/vendor.sh`/`.ps1` (sha256 pinned alongside each URL). Reason: these are the current stable releases as of 2026-09-27; jsDelivr serves the exact npm-published dist files so the sha256 pin is meaningful (a real supply-chain check, not just a formality).
+- Montserrat and Josefin Sans are each vendored as a **single variable-font woff2** (Google Fonts' own CSS serves the identical file URL for every weight in reference/index.html's request — 400/500/600/700 for Montserrat, 400/600 for Josefin Sans — confirmed by fetching the actual `css2` response), only the "latin" subset. `web/vendor/fonts/fonts.css` declares each with a `font-weight: <min> <max>` range, exactly mirroring what Google's own stylesheet does, so only 2 font files are vendored total rather than 6. Reason: this is what the upstream service itself does for these two families; latin-only keeps the files small and covers the English/Latin-script content this app renders (employee names, UI copy) — non-Latin diacritics beyond that are out of scope, spec is silent on it, and latin-ext can be added later if a real need shows up.
+- `scripts/vendor.sh`/`.ps1` verify a pinned sha256 per file and fail loudly (deleting the bad download) on mismatch, rather than fetching unconditionally. Reason: this is the only supply-chain check standard-library Go tooling gives us for vendored JS/fonts committed straight into the repo — worth the small extra script complexity.
 
 ## Blockers
 (none yet)
