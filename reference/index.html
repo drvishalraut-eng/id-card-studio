@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ID Card Studio · White Coat Foundry</title>
+<link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@400;600&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--charcoal:#17202A;--navy:#12203A;--offwhite:#F7F6F2;--coral:#D98282;--gold:#E5B95C;--dnavy:#0B2A55;--muted:#AEB4BC}
+*{box-sizing:border-box;margin:0}
+body{display:grid;grid-template-columns:340px 1fr;height:100vh;background:#3f4247;font-family:Montserrat,sans-serif}
+
+/* App */
+aside{background:#F4F4F2;color:var(--charcoal);overflow:auto;padding:24px;display:flex;flex-direction:column;gap:28px}
+aside h2{font-size:15px;font-weight:700}
+aside label{display:block;font-size:12px;color:#5a6068;margin-top:10px}
+aside input:not([type=range]),aside select,aside textarea{width:100%;font:inherit;font-size:14px;padding:7px 9px;border:1px solid #cfd2d6;border-radius:6px;background:#fff}
+aside input[type=range]{width:100%}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.btn{display:inline-flex;align-items:center;font:600 13px/1.2 Montserrat,sans-serif;padding:8px 12px;border-radius:6px;border:1px solid var(--charcoal);background:var(--charcoal);color:#fff;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--charcoal)}
+.btn:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.list{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.list button{font:inherit;font-size:12px;padding:4px 10px;border-radius:12px;border:1px solid #cfd2d6;background:#fff;cursor:pointer}
+.list button.sel{border-color:var(--charcoal)}
+#status{font-size:12px;line-height:1.5;color:#9b3d3d;white-space:pre-line}
+main{overflow:auto;padding:32px}
+#cards{display:flex;flex-wrap:wrap;gap:24px}
+.empty{color:#cfd3d8;font-size:15px}
+.pair{display:flex;gap:16px;zoom:.42;cursor:pointer}
+.pair.sel .card{box-shadow:0 0 0 10px var(--gold)}
+.hidden{display:none!important}
+
+/* Card: 54 x 85.6 mm at 10 px/mm */
+.card{width:540px;height:856px;position:relative;overflow:hidden;border-radius:32px}
+.slot{position:absolute;top:30px;left:50%;width:120px;height:22px;margin-left:-60px;border-radius:11px;background:#6b7078}
+
+/* Front */
+.front{background:var(--charcoal);color:#fff;text-align:center}
+.brand{position:absolute;top:70px;left:0;right:0;display:flex;justify-content:center}
+.brand img{max-width:380px;max-height:170px}
+.brand .name{color:var(--coral);font-size:28px;font-weight:600;letter-spacing:.1em;margin-top:60px}
+.pair .photo{cursor:copy}
+.photo{position:absolute;top:250px;left:145px;width:250px;height:270px;border-radius:12px;overflow:hidden;background:#d9dcdf}
+.photo img,.photo svg{width:100%;height:100%;object-fit:cover}
+.front h1{position:absolute;top:540px;left:30px;right:30px;font-size:42px;font-weight:600;letter-spacing:-.01em}
+.role{position:absolute;top:594px;left:30px;right:30px;font-size:24px;color:#D5D9DE}
+.meta{position:absolute;top:638px;left:0;right:0;display:flex;justify-content:center;gap:44px;font-size:17px}
+.meta dt{color:var(--coral);font-size:13px;letter-spacing:.12em;margin-bottom:2px}
+.meta dd{font-weight:600}
+.foot,.stripe{position:absolute;left:0;right:0;bottom:0;height:170px}
+.foot{background:var(--offwhite);clip-path:polygon(0 50px,76% 50px,100% 10px,100% 100%,0 100%)}
+.stripe{background:var(--coral);clip-path:polygon(71% 50px,76% 50px,100% 10px,100% 0)}
+.foot p{position:absolute;left:40px;top:78px;text-align:left;color:var(--charcoal);font-size:15px;font-weight:600;letter-spacing:.3em;line-height:1.55}
+
+/* Helios logo */
+.helios{display:flex;flex-direction:column;align-items:center;gap:12px;color:var(--coral);font-family:'Josefin Sans',sans-serif}
+.helios svg{width:96px}
+.helios b{font-weight:600;font-size:22px;letter-spacing:.32em;margin-right:-.32em}
+.helios span{font-size:17px;letter-spacing:.42em;margin-right:-.42em;margin-top:-4px}
+
+/* Back */
+.back{background:var(--navy);color:#fff;padding:0 48px}
+.back::before{content:"";position:absolute;top:-120px;right:-160px;width:420px;height:420px;background:#fff;opacity:.03;transform:rotate(45deg)}
+.back .gold{position:absolute;right:-40px;bottom:120px;width:190px;height:34px;background:linear-gradient(90deg,#E9B23E,#B57A1C);transform:rotate(-52deg)}
+.dynamis{display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:80px;--d:#fff}
+.dynamis .mark{width:112px}
+.dynamis .word{font-weight:600;font-size:40px;letter-spacing:.14em;margin-right:-.14em;line-height:1}
+.dynamis .word svg{height:.7em;margin-right:.14em;vertical-align:0}
+.tag{text-align:center;font-size:14px;font-weight:600;letter-spacing:.24em;margin:18px -20px 0;color:#D5D9DE}
+.contact{margin-top:44px;font-size:19px;line-height:1.45;display:grid;grid-template-columns:28px 1fr;gap:18px 16px;align-items:start}
+.contact svg{width:22px;fill:#fff;margin-top:3px}
+.contact .addr{margin-bottom:10px}
+.back hr{border:0;border-top:1px solid #ffffff40;margin:28px 0 22px}
+.legal{font-size:16px;line-height:1.45;color:#D5D9DE}
+.legal+.legal{margin-top:14px}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="hg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F2C66D"/><stop offset="1" stop-color="#E7757E"/></linearGradient>
+    <linearGradient id="dg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E9B23E"/><stop offset="1" stop-color="#B57A1C"/></linearGradient>
+    <symbol id="helios-mark" viewBox="0 0 160 160">
+      <path id="rays" fill="none" stroke="url(#hg)" stroke-width="2.6" stroke-linecap="round"/>
+      <path d="M71 67v26M89 67v26M71 80h18" fill="none" stroke="url(#hg)" stroke-width="4" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="dynamis-mark" viewBox="0 0 112 100">
+      <path style="fill:var(--d)" d="M0 0H62A50 50 0 0 1 62 100H30L43 82H62A32 32 0 0 0 62 18H18Z"/>
+      <path fill="url(#dg)" d="M14 28H36L60 52L26 100H4L38 52Z"/>
+    </symbol>
+    <symbol id="dynamis-a" viewBox="0 0 40 36">
+      <path style="fill:var(--d)" d="M16 0H24L40 36H33L20 7L7 36H0Z"/>
+      <path fill="url(#dg)" d="M20 22L26 36H14Z"/>
+    </symbol>
+    <symbol id="silhouette" viewBox="0 0 250 270">
+      <rect width="250" height="270" fill="#d9dcdf"/>
+      <circle cx="125" cy="105" r="52" fill="#b9bec4"/><path d="M30 270c0-62 42-100 95-100s95 38 95 100z" fill="#b9bec4"/>
+    </symbol>
+  </defs>
+</svg>
+
+<aside>
+  <section>
+    <h2>Employees</h2>
+    <div class="btns">
+      <label class="btn">Import CSV<input type="file" id="csv" accept=".csv" hidden></label>
+      <label class="btn ghost">Add photos<input type="file" id="photos" accept="image/*" multiple hidden></label>
+    </div>
+    <p id="status"></p>
+    <form id="emp" autocomplete="off">
+      <label>Employee ID<input name="employee_id" required></label>
+      <label>Name<input name="name" required></label>
+      <label>Role<input name="role"></label>
+      <label>Client<select name="client"></select></label>
+      <label>Join date<input name="join_date" type="date"></label>
+      <label>Photo<input type="file" id="photo1" accept="image/*"></label>
+      <label>Photo zoom<input name="zoom" type="range" min="1" max="2.5" step=".05" value="1"></label>
+      <label>Photo horizontal<input name="x" type="range" min="0" max="100" value="50"></label>
+      <label>Photo vertical<input name="y" type="range" min="0" max="100" value="50"></label>
+      <div class="btns">
+        <button class="btn" id="add">Add employee</button>
+        <button type="button" class="btn ghost hidden" id="done">Done</button>
+        <button type="button" class="btn ghost hidden" id="del">Delete</button>
+      </div>
+    </form>
+  </section>
+
+  <section>
+    <h2>Clients</h2>
+    <div class="list" id="clist"></div>
+    <form id="cli" autocomplete="off">
+      <label>Client name<input name="name" required></label>
+      <label>Logo<input type="file" id="logo" accept="image/*"></label>
+      <label>Footer tagline (3 lines)<textarea name="tagline" rows="3"></textarea></label>
+      <div class="btns">
+        <button class="btn">Save client</button>
+        <button type="button" class="btn ghost" id="cnew">New</button>
+        <button type="button" class="btn ghost" id="cdel">Delete</button>
+      </div>
+    </form>
+  </section>
+
+  <section>
+    <h2>Project</h2>
+    <div class="btns">
+      <button type="button" class="btn ghost" id="save">Save project</button>
+      <label class="btn ghost">Open project<input type="file" id="open" accept=".json" hidden></label>
+    </div>
+  </section>
+</aside>
+
+<main><div id="cards"></div><input type="file" id="pick" accept="image/*" hidden></main>
+
+<script>
+const BACK={
+  tagline:'PEOPLE  |  PLACEMENT  |  PROGRESS',
+  address:'Krishna Complex, Plot No. 2,<br>Property No. 545/1,<br>Near Chambharli Naka, At Rees<br>(Navin Vasahat), Post Mohopada,<br>Taluka Khalapur, District Raigad,<br>Maharashtra – 410222',
+  phone:'+91&nbsp;7483831212',
+  email:'Dynamis@rautgroup.com',
+  legal:['This card remains the property of Dynamis and must be returned upon cessation of employment.','If found, please return to the above address or contact +91&nbsp;7483831212.']
+};
+
+let CLIENTS={helios:{name:'Helios Material Handling',logo:'builtin',tagline:['ASSETS','PEOPLE','PERFORMANCE']}};
+let ROWS=[],PHOTOS={},sel=null,csel=null;
+
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtDate=s=>/^\d{4}-\d{2}-\d{2}$/.test(s)?new Date(s+'T00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):esc(s);
+const use=(id,vb)=>`<svg viewBox="${vb}"><use href="#${id}"/></svg>`;
+
+const HELIOS=`<div class="helios">${use('helios-mark','0 0 160 160')}<b>HELIOS MATERIAL</b><span>HANDLING</span></div>`;
+const DYNAMIS=`<div class="dynamis">${use('dynamis-mark','0 0 112 100').replace('<svg','<svg class="mark"')}<div class="word">DYN${use('dynamis-a','0 0 40 36')}MIS</div></div>`;
+const ICON={
+  pin:'<svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg>',
+  phone:'<svg viewBox="0 0 24 24"><path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11 11 0 0 0 3.6.6 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1 11 11 0 0 0 .6 3.6 1 1 0 0 1-.25 1z"/></svg>',
+  mail:'<svg viewBox="0 0 24 24"><path d="M2 5h20v14H2zm2 2v.4l8 5.6 8-5.6V7zm0 2.8V17h16V9.8l-8 5.6z" fill-rule="evenodd"/></svg>'
+};
+
+function front(r){
+  const c=CLIENTS[r.client]||{name:r.client,tagline:[]};
+  const logo=c.logo==='builtin'?HELIOS:c.logo?`<img src="${c.logo}" alt="${esc(c.name)}">`:`<p class="name">${esc(c.name)}</p>`;
+  const src=photoOf(r),z=r.zoom||1,x=r.x??50,y=r.y??50;
+  const photo=src?`<img src="${src}" alt="" style="object-position:${x}% ${y}%;transform:scale(${z});transform-origin:${x}% ${y}%">`:use('silhouette','0 0 250 270');
+  return `<div class="card front"><div class="slot"></div>
+    <div class="brand">${logo}</div>
+    <div class="photo">${photo}</div>
+    <h1>${esc(r.name)}</h1><p class="role">${esc(r.role)}</p>
+    <dl class="meta"><div><dt>EMPLOYEE ID</dt><dd>${esc(r.employee_id)}</dd></div><div><dt>JOIN DATE</dt><dd>${fmtDate(r.join_date)}</dd></div></dl>
+    <div class="stripe"></div>
+    <div class="foot"><p>${c.tagline.map(esc).join('<br>')}</p></div>
+  </div>`;
+}
+
+const BACK_HTML=`<div class="card back"><div class="slot"></div><div class="gold"></div>
+  ${DYNAMIS}<p class="tag">${BACK.tagline}</p>
+  <div class="contact">${ICON.pin}<p class="addr">${BACK.address}</p>${ICON.phone}<p>${BACK.phone}</p>${ICON.mail}<p>${BACK.email}</p></div>
+  <hr>${BACK.legal.map(t=>`<p class="legal">${t}</p>`).join('')}
+</div>`;
+
+// Sunburst rays
+{const d=[],L=[16,9,13,6,11];
+for(let i=0;i<56;i++){const a=i*Math.PI/28,c=Math.cos(a),s=Math.sin(a),p=r=>`${(80+r*c).toFixed(1)} ${(80+r*s).toFixed(1)}`;
+  d.push(`M${p(42)}L${p(42+L[i%5]*.8)}M${p(60)}L${p(i%2?70:74)}`);}
+document.getElementById('rays').setAttribute('d',d.join(''));}
+
+
+const $=id=>document.getElementById(id),emp=$('emp'),cli=$('cli');
+const key=s=>String(s??'').trim().toLowerCase();
+const photoOf=r=>r.img||PHOTOS[key(r.photo)]||Object.entries(PHOTOS).find(([k])=>k.split('.')[0]===key(r.employee_id))?.[1];
+const readURL=f=>new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.readAsDataURL(f)});
+const findClient=v=>Object.keys(CLIENTS).find(k=>k===key(v)||key(CLIENTS[k].name)===key(v));
+
+function render(){
+  $('cards').innerHTML=ROWS.length?ROWS.map((r,i)=>`<div class="pair${i===sel?' sel':''}" data-i="${i}">${front(r)}${BACK_HTML}</div>`).join('')
+    :'<p class="empty">Import a CSV or add an employee to see cards.</p>';
+  const missing=ROWS.filter(r=>!CLIENTS[r.client]).map(r=>`${r.employee_id}: unknown client "${r.client}"`);
+  $('status').textContent=missing.join('\n');
+}
+function renderClients(){
+  emp.client.innerHTML=Object.entries(CLIENTS).map(([k,c])=>`<option value="${k}">${esc(c.name)}</option>`).join('');
+  $('clist').innerHTML=Object.entries(CLIENTS).map(([k,c])=>`<button type="button" data-k="${k}" class="${k===csel?'sel':''}">${esc(c.name)}</button>`).join('');
+}
+
+// Employees
+const FIELDS=['employee_id','name','role','client','join_date','zoom','x','y'];
+function formRow(){const r={};FIELDS.forEach(f=>r[f]=emp[f].value.trim());['zoom','x','y'].forEach(f=>r[f]=+r[f]);return r}
+function select(i){
+  sel=i;const r=ROWS[i]||{};
+  emp.reset();FIELDS.forEach(f=>{if(r[f]!=null)emp[f].value=r[f]});
+  ['add','done','del'].forEach(b=>$(b).classList.toggle('hidden',(b==='add')===(i!=null)));
+  render();
+}
+emp.oninput=e=>{if(sel==null||e.target.type==='file')return;Object.assign(ROWS[sel],formRow());render()};
+emp.onsubmit=e=>{e.preventDefault();ROWS.push({...formRow(),img:emp.dataset.img||''});delete emp.dataset.img;select(null)};
+$('done').onclick=()=>select(null);
+$('del').onclick=()=>{ROWS.splice(sel,1);select(null)};
+// Per-employee photo: form field, click on card photo, or drop onto card
+let target=null;
+const setImg=async(i,f)=>{if(f?.type.startsWith('image/')){ROWS[i].img=await readURL(f);render()}};
+$('cards').onclick=e=>{
+  const p=e.target.closest('.pair');if(!p)return;
+  if(e.target.closest('.photo')){target=+p.dataset.i;$('pick').click()}else select(+p.dataset.i);
+};
+$('pick').onchange=e=>{setImg(target,e.target.files[0]);e.target.value=''};
+$('cards').ondragover=e=>e.preventDefault();
+$('cards').ondrop=e=>{e.preventDefault();const p=e.target.closest('.pair');if(p)setImg(+p.dataset.i,e.dataTransfer.files[0])};
+$('photo1').onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;
+  if(sel!=null)setImg(sel,f);else emp.dataset.img=await readURL(f);
+  e.target.value='';
+};
+$('photos').onchange=async e=>{for(const f of e.target.files)PHOTOS[key(f.name)]=await readURL(f);e.target.value='';render()};
+$('csv').onchange=e=>{
+  Papa.parse(e.target.files[0],{header:true,skipEmptyLines:true,transformHeader:key,complete:({data})=>{
+    ROWS.push(...data.map(d=>({...d,client:findClient(d.client)||d.client,zoom:1,x:50,y:50})));
+    e.target.value='';render();
+  }});
+};
+
+// Clients
+function cselect(k){
+  csel=k;const c=CLIENTS[k];cli.reset();
+  if(c){cli.name.value=c.name;cli.tagline.value=c.tagline.join('\n')}
+  renderClients();
+}
+$('clist').onclick=e=>{const b=e.target.closest('button');if(b)cselect(b.dataset.k)};
+$('cnew').onclick=()=>cselect(null);
+$('cdel').onclick=()=>{if(csel){delete CLIENTS[csel];cselect(null);render()}};
+cli.onsubmit=async e=>{
+  e.preventDefault();
+  const k=csel||key(cli.name.value).replace(/[^a-z0-9]+/g,'-'),f=$('logo').files[0];
+  CLIENTS[k]={...CLIENTS[k],name:cli.name.value.trim(),tagline:cli.tagline.value.split('\n').map(s=>s.trim().toUpperCase()).filter(Boolean).slice(0,3)};
+  if(f)CLIENTS[k].logo=await readURL(f);
+  cselect(k);render();
+};
+
+// Project
+$('save').onclick=()=>{
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify({CLIENTS,ROWS,PHOTOS})],{type:'application/json'}));
+  a.download='id-card-project.json';a.click();URL.revokeObjectURL(a.href);
+};
+$('open').onchange=async e=>{
+  ({CLIENTS,ROWS,PHOTOS}=JSON.parse(await e.target.files[0].text()));
+  e.target.value='';cselect(null);select(null);
+};
+
+renderClients();render();
+</script>
+</body>
+</html>
