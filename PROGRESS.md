@@ -206,3 +206,70 @@ creates `config.json` and `data/` next to itself on first run.
   corresponding implementation. The one real bug the cleanup pass found
   (client logos stored inline instead of as `data/logos/<id>.svg`
   files) was fixed, not just noted.
+
+## Post-handover: real browser verification (2026-09-28)
+
+A later session got Chrome browser tooling connected and used it to
+actually click through the Wizard — the visual check task 13/21's
+Handover explicitly flagged as not yet done. It surfaced and fixed
+**three real bugs**, two matching the user's report ("the wizard is
+unhelpful, clicks land outside the box") and one critical bug the
+report didn't even mention:
+
+1. **`preview.js`'s `fitScale()` only fit the card's width, never its
+   height.** Since `CARD_HEIGHT` (856) is nearly double `CARD_WIDTH`
+   (540), on any normal landscape window the container's *height* is
+   almost always the binding constraint, not its width — so the card
+   rendered taller than its panel, pushing the back card, the nav
+   buttons and effectively the whole bottom portion of the preview off
+   the visible area. Fixed by computing scale as `min(widthFit,
+   heightFit)` (a proper "contain" fit), measuring the actual nav row
+   height rather than a hardcoded guess.
+2. **A CSS class-name collision**: `card.css` was carried over from
+   `reference/index.html` with bare, unscoped selectors (`.brand`,
+   `.role`, `.meta`, `.photo`, `.tag`, ...) that were safe in that
+   isolated single-purpose page but collide with this app's own chrome
+   reusing the same generic names — confirmed via
+   `getComputedStyle`/`getBoundingClientRect` in a live page that the
+   top bar's own `.brand` (logo + "ID Card Studio") and `.who .role`
+   ("Admin" under the user's name) were inheriting `position: absolute`
+   from `card.css`'s bare `.brand`/`.role` rules, scattering them across
+   the page instead of sitting in the top bar. This is almost certainly
+   what read as "clicks land outside the box" — real, correctly-wired
+   interactive elements rendered nowhere near where their listeners
+   actually lived. Fixed by scoping every selector in `card.css` under
+   `.card` (`.card .brand`, `.card .role`, etc.), so the file can never
+   again leak into anything outside an actual card element.
+3. **A critical, unreported backend bug**: a nil Go slice marshals to
+   JSON `null`, not `[]`. `employees.Store.List()` (and, latently,
+   `clients.Store.List()` and `auth.UserStore.List()`) returned the
+   zero value of `[]T` — `nil` — whenever the backing JSON file didn't
+   exist yet. On a genuinely fresh install with zero employees,
+   `GET /api/employees` returned `null`, and `wizard.js`'s
+   `employeeList.map(...)` threw, silently aborting the rest of
+   `renderWizard()` — which is why the step bar never showed an active
+   step and Step 1's content never rendered at all. Every prior
+   end-to-end smoke test in this project added an employee *before*
+   checking the list, so this was never once triggered until a real
+   browser hit a truly empty install. Fixed at all three call sites;
+   each now normalizes `nil` to an explicit empty slice, with a new
+   regression test per package asserting `json.Marshal(list) == "[]"`
+   on a fresh, empty store.
+
+All three fixes are covered by the full Go test suite (145 → 148
+tests, all passing) and were re-verified visually: a rebuilt binary
+correctly shows the card preview fully contained in its panel, the top
+bar's brand/role text in the right place, and Step 1's client dropdown
+and Step 2's employee table both rendering and switching correctly.
+
+**Tooling note for whoever picks this up next:** this session's browser
+automation had an unreliable simulated-keyboard/`left_click` path —
+confirmed independently on Google's own search box, so it isn't an
+application bug — while `element.click()` via injected JS and
+`getBoundingClientRect`/`getComputedStyle` inspection worked reliably
+throughout. As a result, Steps 3 and 4 (photo crop drag, export
+filters/selection) were not re-verified with real clicks this session,
+only read through carefully again. **A future session with reliable
+click/type tooling should still do a real pass over Steps 3 and 4**,
+and in particular the drag-to-crop direction in Step 3, which task 17's
+decisions already flagged as an untested guess.

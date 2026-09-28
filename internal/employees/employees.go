@@ -65,9 +65,19 @@ func NewStore(path string) *Store {
 	return &Store{store: storage.New[[]Employee](path)}
 }
 
-// List returns every employee, in no particular order.
+// List returns every employee, in no particular order. Never nil — a
+// missing employees.json loads as a nil slice, which encoding/json would
+// otherwise marshal as JSON null instead of [], breaking any frontend
+// code that calls .map() on the response before any employee exists.
 func (s *Store) List() ([]Employee, error) {
-	return s.store.Load()
+	list, err := s.store.Load()
+	if err != nil {
+		return nil, err
+	}
+	if list == nil {
+		list = []Employee{}
+	}
+	return list, nil
 }
 
 // Find returns the employee with the given employee_id, if any.

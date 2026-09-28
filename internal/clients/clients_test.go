@@ -1,6 +1,7 @@
 package clients
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -213,5 +214,26 @@ func TestUpdateWithoutNewLogoKeepsExistingFileContent(t *testing.T) {
 	}
 	if list[0].Logo != validLogo {
 		t.Fatalf("List() should also populate Logo from disk, got %q", list[0].Logo)
+	}
+}
+
+// A nil slice marshals to JSON null, not []; a fresh install with no
+// clients.json yet must still return a real (non-nil) empty slice, even
+// though this is normally masked by the Helios seed.
+func TestListOnMissingFileReturnsEmptySliceNotNil(t *testing.T) {
+	m := newTestManager(t)
+	list, err := m.Store.List()
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if list == nil {
+		t.Fatal("List() returned nil; it must return a non-nil empty slice so it marshals to JSON [] not null")
+	}
+	data, err := json.Marshal(list)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	if string(data) != "[]" {
+		t.Fatalf("got JSON %s, want []", data)
 	}
 }

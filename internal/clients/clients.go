@@ -37,9 +37,17 @@ func NewStore(path string) *Store {
 	return &Store{store: storage.New[[]Client](path)}
 }
 
-// List returns every client, in no particular order.
+// List returns every client, in no particular order. Never nil — see
+// employees.Store.List's comment for why that matters for the API.
 func (s *Store) List() ([]Client, error) {
-	return s.store.Load()
+	list, err := s.store.Load()
+	if err != nil {
+		return nil, err
+	}
+	if list == nil {
+		list = []Client{}
+	}
+	return list, nil
 }
 
 // Find returns the client with the given id, if any.

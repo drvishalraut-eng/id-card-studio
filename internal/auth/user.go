@@ -40,9 +40,17 @@ func NewUserStore(path string) *UserStore {
 	return &UserStore{store: storage.New[[]User](path)}
 }
 
-// List returns every user, in no particular order.
+// List returns every user, in no particular order. Never nil — see
+// employees.Store.List's comment for why that matters for the API.
 func (s *UserStore) List() ([]User, error) {
-	return s.store.Load()
+	list, err := s.store.Load()
+	if err != nil {
+		return nil, err
+	}
+	if list == nil {
+		list = []User{}
+	}
+	return list, nil
 }
 
 // Find returns the user with the given username (case-insensitive), if any.

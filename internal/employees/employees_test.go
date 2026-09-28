@@ -1,6 +1,7 @@
 package employees
 
 import (
+	"encoding/json"
 	"path/filepath"
 	"testing"
 )
@@ -98,5 +99,26 @@ func TestMapClientRejectsUnknownEmployee(t *testing.T) {
 	m := newTestManager(t)
 	if _, err := m.MapClient("nope", "Helios", "ada"); err == nil {
 		t.Fatal("expected an error for an unknown employee_id")
+	}
+}
+
+// A nil slice marshals to JSON null, not []; the frontend calls .map() on
+// this response before any employee exists, so a fresh install with no
+// employees.json yet must still return a real (non-nil) empty slice.
+func TestListOnMissingFileReturnsEmptySliceNotNil(t *testing.T) {
+	m := newTestManager(t)
+	list, err := m.Store.List()
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if list == nil {
+		t.Fatal("List() returned nil; it must return a non-nil empty slice so it marshals to JSON [] not null")
+	}
+	data, err := json.Marshal(list)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	if string(data) != "[]" {
+		t.Fatalf("got JSON %s, want []", data)
 	}
 }

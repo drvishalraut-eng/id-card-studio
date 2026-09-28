@@ -28,6 +28,7 @@ export function createPreview(container) {
 
   const wrap = container.querySelector('.preview-scale-wrap');
   const pair = container.querySelector('.preview-pair');
+  const nav = container.querySelector('.preview-nav');
   const counter = container.querySelector('#preview-counter');
   const prevBtn = container.querySelector('#preview-prev');
   const nextBtn = container.querySelector('#preview-next');
@@ -36,10 +37,25 @@ export function createPreview(container) {
     return items.length ? items[index] : null;
   }
 
+  // fitScale "contains" the pair within container: constrained by BOTH
+  // width and height, not just width. CARD_HEIGHT (856) is nearly double
+  // CARD_WIDTH (540), so on a typical landscape window the container's
+  // height — not its width — is usually the binding constraint; a
+  // width-only fit (the original bug here) makes the card taller than the
+  // panel, pushing its lower portion and the nav row below the visible
+  // area and out of sync with where clicks actually land.
   function fitScale() {
-    const available = container.clientWidth - 48; // panel padding
-    if (available <= 0) return 1;
-    return Math.min(1, available / PAIR_WIDTH);
+    const style = getComputedStyle(container);
+    const paddingX = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+    const paddingY = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+    const gap = parseFloat(style.gap) || 0;
+    const navHeight = nav.getBoundingClientRect().height || 44;
+
+    const availableWidth = container.clientWidth - paddingX;
+    const availableHeight = container.clientHeight - paddingY - gap - navHeight;
+    if (availableWidth <= 0 || availableHeight <= 0) return 1;
+
+    return Math.min(1, availableWidth / PAIR_WIDTH, availableHeight / CARD_HEIGHT);
   }
 
   function render() {

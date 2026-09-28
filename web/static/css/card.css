@@ -1,7 +1,14 @@
 /* Card front/back, matching reference/index.html's card CSS exactly (the
    general app-shell rules there are not part of this file — those live in
    app.css, rebuilt for this app's actual UI). Colour tokens are the same
-   --charcoal/--navy/--offwhite/--coral/--gold/--dnavy defined in app.css. */
+   --charcoal/--navy/--offwhite/--coral/--gold/--dnavy defined in app.css.
+
+   Every selector below is scoped under .card: the reference's own CSS used
+   bare class names (.brand, .role, .meta, .photo, .tag, ...) that were safe
+   in that isolated single-purpose page, but collide with this app's own
+   chrome reusing the same generic names for unrelated things (the top
+   bar's own .brand section, a user's .role text) — confirmed to actually
+   happen with .brand and .role, only caught via a real browser check. */
 
 .card, .card * {
   margin: 0;
@@ -18,7 +25,7 @@
   flex-shrink: 0;
 }
 
-.slot {
+.card .slot {
   position: absolute;
   top: 30px;
   left: 50%;
@@ -30,13 +37,13 @@
 }
 
 /* Front */
-.front {
+.card.front {
   background: var(--charcoal);
   color: #fff;
   text-align: center;
 }
 
-.brand {
+.card .brand {
   position: absolute;
   top: 70px;
   left: 0;
@@ -45,12 +52,12 @@
   justify-content: center;
 }
 
-.brand svg {
+.card .brand svg {
   max-width: 380px;
   max-height: 170px;
 }
 
-.dashed-logo {
+.card .dashed-logo {
   margin-top: 40px;
   padding: 16px 24px;
   border: 2px dashed #4b5560;
@@ -61,7 +68,7 @@
   letter-spacing: .04em;
 }
 
-.photo {
+.card .photo {
   position: absolute;
   top: 250px;
   left: 145px;
@@ -72,13 +79,13 @@
   background: #d9dcdf;
 }
 
-.photo img, .photo svg {
+.card .photo img, .card .photo svg {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.front h1 {
+.card.front h1 {
   position: absolute;
   top: 540px;
   left: 30px;
@@ -88,7 +95,7 @@
   letter-spacing: -.01em;
 }
 
-.role {
+.card .role {
   position: absolute;
   top: 594px;
   left: 30px;
@@ -97,7 +104,7 @@
   color: #D5D9DE;
 }
 
-.meta {
+.card .meta {
   position: absolute;
   top: 638px;
   left: 0;
@@ -108,18 +115,18 @@
   font-size: 17px;
 }
 
-.meta dt {
+.card .meta dt {
   color: var(--coral);
   font-size: 13px;
   letter-spacing: .12em;
   margin-bottom: 2px;
 }
 
-.meta dd {
+.card .meta dd {
   font-weight: 600;
 }
 
-.foot, .stripe {
+.card .foot, .card .stripe {
   position: absolute;
   left: 0;
   right: 0;
@@ -127,17 +134,17 @@
   height: 170px;
 }
 
-.foot {
+.card .foot {
   background: var(--offwhite);
   clip-path: polygon(0 50px, 76% 50px, 100% 10px, 100% 100%, 0 100%);
 }
 
-.stripe {
+.card .stripe {
   background: var(--coral);
   clip-path: polygon(71% 50px, 76% 50px, 100% 10px, 100% 0);
 }
 
-.foot p {
+.card .foot p {
   position: absolute;
   left: 40px;
   top: 78px;
@@ -150,7 +157,7 @@
 }
 
 /* Helios logo */
-.helios {
+.card .helios {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -159,18 +166,18 @@
   font-family: 'Josefin Sans', sans-serif;
 }
 
-.helios svg {
+.card .helios svg {
   width: 96px;
 }
 
-.helios b {
+.card .helios b {
   font-weight: 600;
   font-size: 22px;
   letter-spacing: .32em;
   margin-right: -.32em;
 }
 
-.helios span {
+.card .helios span {
   font-size: 17px;
   letter-spacing: .42em;
   margin-right: -.42em;
@@ -178,13 +185,13 @@
 }
 
 /* Back */
-.back {
+.card.back {
   background: var(--navy);
   color: #fff;
   padding: 0 48px;
 }
 
-.back::before {
+.card.back::before {
   content: "";
   position: absolute;
   top: -120px;
@@ -196,7 +203,7 @@
   transform: rotate(45deg);
 }
 
-.back .gold {
+.card.back .gold {
   position: absolute;
   right: -40px;
   bottom: 120px;
@@ -206,7 +213,7 @@
   transform: rotate(-52deg);
 }
 
-.dynamis {
+.card .dynamis {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -215,11 +222,11 @@
   --d: #fff;
 }
 
-.dynamis .mark {
+.card .dynamis .mark {
   width: 112px;
 }
 
-.dynamis .word {
+.card .dynamis .word {
   font-weight: 600;
   font-size: 40px;
   letter-spacing: .14em;
@@ -227,13 +234,13 @@
   line-height: 1;
 }
 
-.dynamis .word svg {
+.card .dynamis .word svg {
   height: .7em;
   margin-right: .14em;
   vertical-align: 0;
 }
 
-.tag {
+.card .tag {
   text-align: center;
   font-size: 14px;
   font-weight: 600;
@@ -242,7 +249,7 @@
   color: #D5D9DE;
 }
 
-.contact {
+.card .contact {
   margin-top: 44px;
   font-size: 19px;
   line-height: 1.45;
@@ -252,29 +259,29 @@
   align-items: start;
 }
 
-.contact svg {
+.card .contact svg {
   width: 22px;
   fill: #fff;
   margin-top: 3px;
 }
 
-.contact .addr {
+.card .contact .addr {
   margin-bottom: 10px;
 }
 
-.back hr {
+.card.back hr {
   border: 0;
   border-top: 1px solid #ffffff40;
   margin: 28px 0 22px;
 }
 
-.legal {
+.card .legal {
   font-size: 16px;
   line-height: 1.45;
   color: #D5D9DE;
 }
 
-.legal + .legal {
+.card .legal + .legal {
   margin-top: 14px;
 }
 
