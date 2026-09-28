@@ -102,6 +102,62 @@ func TestMapClientRejectsUnknownEmployee(t *testing.T) {
 	}
 }
 
+func TestDeleteRemovesTheEmployeeAndReturnsIt(t *testing.T) {
+	m := newTestManager(t)
+	if _, err := m.Save(Input{EmployeeID: "E001", Name: "Priya Rao", JoinDate: "2026-01-01"}, "ada"); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	if _, err := m.Store.Update("E001", func(e Employee) (Employee, error) {
+		e.Photo = "E001.jpg"
+		return e, nil
+	}); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+
+	removed, err := m.Delete("E001")
+	if err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	if removed.Photo != "E001.jpg" {
+		t.Fatalf("expected Delete to return the removed employee (with its photo filename), got %+v", removed)
+	}
+
+	if _, found, err := m.Store.Find("E001"); err != nil {
+		t.Fatalf("Find: %v", err)
+	} else if found {
+		t.Fatal("expected E001 to be gone after Delete")
+	}
+}
+
+func TestDeleteRejectsUnknownEmployee(t *testing.T) {
+	m := newTestManager(t)
+	if _, err := m.Delete("nope"); err == nil {
+		t.Fatal("expected an error for an unknown employee_id")
+	}
+}
+
+func TestDeleteLeavesOtherEmployeesIntact(t *testing.T) {
+	m := newTestManager(t)
+	if _, err := m.Save(Input{EmployeeID: "E001", Name: "Priya Rao", JoinDate: "2026-01-01"}, "ada"); err != nil {
+		t.Fatalf("Save E001: %v", err)
+	}
+	if _, err := m.Save(Input{EmployeeID: "E002", Name: "Raj Kumar", JoinDate: "2026-01-01"}, "ada"); err != nil {
+		t.Fatalf("Save E002: %v", err)
+	}
+
+	if _, err := m.Delete("E001"); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+
+	list, err := m.Store.List()
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(list) != 1 || list[0].EmployeeID != "E002" {
+		t.Fatalf("expected only E002 to remain, got %+v", list)
+	}
+}
+
 // A nil slice marshals to JSON null, not []; the frontend calls .map() on
 // this response before any employee exists, so a fresh install with no
 // employees.json yet must still return a real (non-nil) empty slice.

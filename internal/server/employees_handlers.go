@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
 
@@ -26,6 +27,7 @@ func (s *Server) registerEmployeeRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /employees/{id}/client", s.Auth.RequireAuth(http.HandlerFunc(s.handleMapClient)))
 	mux.Handle("POST /employees/{id}/photo", s.Auth.RequireAuth(http.HandlerFunc(s.handleUploadPhoto)))
 	mux.Handle("GET /employees/{id}/photo", s.Auth.RequireAuth(http.HandlerFunc(s.handleGetPhoto)))
+	mux.Handle("DELETE /employees/{id}", s.Auth.RequireAuth(http.HandlerFunc(s.handleDeleteEmployee)))
 }
 
 func (s *Server) handleListEmployees(w http.ResponseWriter, r *http.Request) {
@@ -111,6 +113,28 @@ func (s *Server) handleMapClient(w http.ResponseWriter, r *http.Request) {
 	}
 	s.logAction(r, actor.Username, "employee_client_mapped", e.EmployeeID)
 	writeJSON(w, http.StatusOK, e)
+}
+
+// handleDeleteEmployee removes an employee entirely, along with its photo
+// file if it had one. employee_id can't be edited in place (see
+// employees.Manager.Delete) — this is how a wrong ID gets corrected.
+func (s *Server) handleDeleteEmployee(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	removed, err := s.Employees.Delete(id)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "no employee with that ID")
+		return
+	}
+	if removed.Photo != "" {
+		if err := os.Remove(filepath.Join(s.Info.PhotosDir, removed.Photo)); err != nil && !os.IsNotExist(err) {
+			writeError(w, http.StatusInternalServerError, "employee deleted but its photo could not be removed: "+err.Error())
+			return
+		}
+	}
+
+	actor, _ := auth.UserFromContext(r.Context())
+	s.logAction(r, actor.Username, "employee_deleted", id)
+	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
 // jpegMagic is the JPEG SOI marker: a minimal sanity check that the upload

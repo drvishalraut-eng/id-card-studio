@@ -6,6 +6,8 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"idcardstudio/internal/auth"
@@ -328,5 +330,73 @@ func TestGetPhotoReturns404ForUnknownEmployee(t *testing.T) {
 	rec := doJSON(t, h, http.MethodGet, "/employees/nope/photo", nil, admin)
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("got status %d, want 404", rec.Code)
+	}
+}
+
+func TestDeleteEmployeeRemovesRecordAndPhoto(t *testing.T) {
+	srv := newTestServer(t)
+	h := srv.Handler()
+	admin := setupAdmin(t, h)
+	doJSON(t, h, http.MethodPost, "/employees", map[string]any{
+		"employee_id": "E001", "name": "Priya Rao", "join_date": "2026-01-15",
+	}, admin)
+
+	var body bytes.Buffer
+	mw := multipart.NewWriter(&body)
+	part, err := mw.CreateFormFile("photo", "photo.jpg")
+	if err != nil {
+		t.Fatalf("CreateFormFile: %v", err)
+	}
+	part.Write(validJPEG)
+	mw.WriteField("zoom", "1")
+	mw.WriteField("x", "50")
+	mw.WriteField("y", "50")
+	if err := mw.Close(); err != nil {
+		t.Fatalf("close multipart writer: %v", err)
+	}
+	uploadReq := httptest.NewRequest(http.MethodPost, "/employees/E001/photo", &body)
+	uploadReq.Header.Set("Content-Type", mw.FormDataContentType())
+	uploadReq.Header.Set(auth.RequestedWithHeader, auth.RequestedWithValue)
+	uploadReq.AddCookie(admin)
+	uploadRec := httptest.NewRecorder()
+	h.ServeHTTP(uploadRec, uploadReq)
+	if uploadRec.Code != http.StatusOK {
+		t.Fatalf("upload: got status %d, body %s", uploadRec.Code, uploadRec.Body)
+	}
+	photoPath := filepath.Join(srv.Info.PhotosDir, "E001.jpg")
+	if _, err := os.Stat(photoPath); err != nil {
+		t.Fatalf("expected the photo file to exist before deleting, got: %v", err)
+	}
+
+	rec := doJSON(t, h, http.MethodDelete, "/employees/E001", nil, admin)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("delete: got status %d, body %s", rec.Code, rec.Body)
+	}
+
+	if _, found, err := srv.Employees.Store.Find("E001"); err != nil {
+		t.Fatalf("Find: %v", err)
+	} else if found {
+		t.Fatal("expected E001 to be gone after delete")
+	}
+	if _, err := os.Stat(photoPath); !os.IsNotExist(err) {
+		t.Fatalf("expected the photo file to be removed, stat err=%v", err)
+	}
+}
+
+func TestDeleteEmployeeReturns404ForUnknownID(t *testing.T) {
+	h := newTestServer(t).Handler()
+	admin := setupAdmin(t, h)
+
+	rec := doJSON(t, h, http.MethodDelete, "/employees/nope", nil, admin)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("got status %d, want 404", rec.Code)
+	}
+}
+
+func TestDeleteEmployeeRequiresAuth(t *testing.T) {
+	h := newTestServer(t).Handler()
+	rec := doJSON(t, h, http.MethodDelete, "/employees/E001", nil)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("got status %d, want 401", rec.Code)
 	}
 }

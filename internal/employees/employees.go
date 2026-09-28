@@ -131,6 +131,30 @@ func (s *Store) Update(id string, fn func(Employee) (Employee, error)) (Employee
 	return updated, err
 }
 
+// Delete removes the employee matching id and returns it, so a caller can
+// also clean up anything that referenced it (its photo file).
+func (s *Store) Delete(id string) (Employee, error) {
+	var removed Employee
+	found := false
+	_, err := s.store.Update(func(employees []Employee) ([]Employee, error) {
+		for i, e := range employees {
+			if e.EmployeeID == id {
+				removed = e
+				found = true
+				return append(employees[:i], employees[i+1:]...), nil
+			}
+		}
+		return employees, nil
+	})
+	if err != nil {
+		return Employee{}, err
+	}
+	if !found {
+		return Employee{}, fmt.Errorf("no employee %q", id)
+	}
+	return removed, nil
+}
+
 // Manager validates employee input before writing it to the Store.
 type Manager struct {
 	Store *Store
@@ -203,4 +227,13 @@ func (m *Manager) MapClient(id, clientCode, updatedBy string) (Employee, error) 
 		e.UpdatedAt = time.Now()
 		return e, nil
 	})
+}
+
+// Delete removes an employee entirely. Every other field (name, role,
+// client, join date) can be corrected in place via Save; employee_id is
+// the one thing that can't, since changing it is indistinguishable from
+// creating a different employee — Delete plus a fresh Save is how that
+// case is meant to be handled.
+func (m *Manager) Delete(id string) (Employee, error) {
+	return m.Store.Delete(id)
 }

@@ -60,6 +60,7 @@ export function renderStep2(container, deps) {
   let selectedId = null;
   let search = '';
   let clientFilter = '';
+  let editingId = null; // set while the Add/Edit form is editing an existing employee
 
   container.innerHTML = `
     <div class="step2">
@@ -87,21 +88,25 @@ export function renderStep2(container, deps) {
         </div>
       </div>
       <table class="data-table" id="employees-table">
-        <thead><tr><th>ID</th><th>Name</th><th>Client</th></tr></thead>
+        <thead><tr><th>ID</th><th>Name</th><th>Client</th><th>Actions</th></tr></thead>
         <tbody></tbody>
       </table>
 
-      <h3>Add employee</h3>
+      <h3 id="add-employee-heading">Add employee</h3>
       <form id="add-employee-form" autocomplete="off" novalidate>
         <div class="field"><label for="ae-id">Employee ID</label><input id="ae-id" name="employee_id" required></div>
+        <p class="hint-text" id="ae-id-hint" hidden>Employee ID can't be changed here — delete this employee and add a new one to fix a wrong ID.</p>
         <div class="field"><label for="ae-name">Name</label><input id="ae-name" name="name" required></div>
         <div class="field"><label for="ae-role">Role</label><input id="ae-role" name="role"></div>
         <div class="field"><label for="ae-client">Client</label>
           <select id="ae-client" name="client"><option value="">Select a client…</option></select></div>
         <div class="field"><label for="ae-join-date">Join date</label><input id="ae-join-date" name="join_date" type="date" required></div>
-        <div class="field"><label for="ae-photo">Photo (optional)</label><input id="ae-photo" type="file" accept="image/*"></div>
+        <div class="field"><label for="ae-photo" id="ae-photo-label">Photo (optional)</label><input id="ae-photo" type="file" accept="image/*"></div>
         <p class="error-text" id="add-employee-error"></p>
-        <button type="submit" class="btn">Add employee</button>
+        <div class="btns">
+          <button type="submit" class="btn" id="add-employee-submit">Add employee</button>
+          <button type="button" class="btn ghost" id="add-employee-cancel" hidden>Cancel</button>
+        </div>
       </form>
     </div>
   `;
@@ -117,6 +122,12 @@ export function renderStep2(container, deps) {
   const addForm = container.querySelector('#add-employee-form');
   const addError = container.querySelector('#add-employee-error');
   const addClientSelect = container.querySelector('#ae-client');
+  const formHeading = container.querySelector('#add-employee-heading');
+  const idInput = container.querySelector('#ae-id');
+  const idHint = container.querySelector('#ae-id-hint');
+  const photoLabel = container.querySelector('#ae-photo-label');
+  const submitBtn = container.querySelector('#add-employee-submit');
+  const cancelBtn = container.querySelector('#add-employee-cancel');
 
   function clientOptionsHtml(includeBlank) {
     const blank = includeBlank ? '<option value="">Select a client…</option>' : '';
@@ -175,6 +186,13 @@ export function renderStep2(container, deps) {
     });
   }
 
+  function actionsCellHtml() {
+    return `<td class="row-actions">
+      <button type="button" class="btn ghost edit-btn">Edit</button>
+      <button type="button" class="btn ghost delete-btn">Delete</button>
+    </td>`;
+  }
+
   function renderTable() {
     const tbody = table.querySelector('tbody');
     const rows = filteredEmployees();
@@ -186,16 +204,83 @@ export function renderStep2(container, deps) {
           <td>${escapeHtml(e.employee_id)}</td>
           <td>${escapeHtml(e.name)}</td>
           <td>${escapeHtml(e.client_code)}</td>
+          ${actionsCellHtml()}
         </tr>`,
           )
           .join('')
-      : '<tr><td colspan="3">No employees match.</td></tr>';
+      : '<tr><td colspan="4">No employees match.</td></tr>';
+  }
+
+  function startEdit(employee) {
+    editingId = employee.employee_id;
+    addError.textContent = '';
+    formHeading.textContent = `Edit employee — ${employee.employee_id}`;
+    idInput.value = employee.employee_id;
+    idInput.readOnly = true;
+    idHint.hidden = false;
+    addForm.name.value = employee.name || '';
+    addForm.role.value = employee.role || '';
+    addForm.client.value = employee.client_code || '';
+    addForm.join_date.value = employee.join_date || '';
+    addForm.querySelector('#ae-photo').value = '';
+    photoLabel.textContent = employee.photo ? 'Replace photo (optional)' : 'Add photo (optional)';
+    submitBtn.textContent = 'Save changes';
+    cancelBtn.hidden = false;
+    addForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function stopEdit() {
+    editingId = null;
+    addError.textContent = '';
+    formHeading.textContent = 'Add employee';
+    idInput.readOnly = false;
+    idHint.hidden = true;
+    photoLabel.textContent = 'Photo (optional)';
+    submitBtn.textContent = 'Add employee';
+    cancelBtn.hidden = true;
+    addForm.reset();
+  }
+
+  cancelBtn.addEventListener('click', stopEdit);
+
+  function showDeleteConfirm(row, id) {
+    const cell = row.querySelector('.row-actions');
+    cell.innerHTML = `
+      <span class="delete-confirm-text">Delete this employee?</span>
+      <button type="button" class="btn danger confirm-delete-btn">Delete</button>
+      <button type="button" class="btn ghost cancel-delete-btn">Cancel</button>
+    `;
+    cell.querySelector('.cancel-delete-btn').addEventListener('click', renderTable);
+    cell.querySelector('.confirm-delete-btn').addEventListener('click', async (e) => {
+      e.target.disabled = true;
+      try {
+        await api.delete(`/employees/${encodeURIComponent(id)}`);
+        if (editingId === id) stopEdit();
+        if (selectedId === id) selectedId = null;
+        await reloadEmployees();
+      } catch (err) {
+        importError.textContent = err.message;
+        renderTable();
+      }
+    });
   }
 
   table.addEventListener('click', (e) => {
     const row = e.target.closest('tr[data-id]');
     if (!row) return;
-    selectedId = row.dataset.id;
+    const id = row.dataset.id;
+
+    if (e.target.closest('.edit-btn')) {
+      const employee = employees.find((emp) => emp.employee_id === id);
+      if (employee) startEdit(employee);
+      return;
+    }
+    if (e.target.closest('.delete-btn')) {
+      showDeleteConfirm(row, id);
+      return;
+    }
+
+    selectedId = id;
     const index = employees.findIndex((emp) => emp.employee_id === selectedId);
     if (index >= 0) preview.setIndex(index);
     renderTable();
@@ -274,7 +359,7 @@ export function renderStep2(container, deps) {
         await api.post(`/employees/${encodeURIComponent(saved.employee_id)}/photo`, form);
       }
 
-      addForm.reset();
+      stopEdit();
       await reloadEmployees();
     } catch (err) {
       addError.textContent = err.message;

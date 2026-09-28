@@ -15,6 +15,14 @@
   box-sizing: border-box;
 }
 
+/* Every element toggles visibility via the `hidden` attribute; without
+   this, an element that also matches a rule setting its own `display`
+   (e.g. any .btn) never actually hides, since an author style always
+   wins over the browser's default [hidden]{display:none}. */
+[hidden] {
+  display: none !important;
+}
+
 html, body {
   margin: 0;
   height: 100%;
@@ -141,6 +149,12 @@ textarea:focus-visible,
   color: #2e7d32;
   font-size: 13px;
   min-height: 1.2em;
+}
+
+.hint-text {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: -2px 0 0;
 }
 
 /* Auth screens (first-run setup, login) */
@@ -416,6 +430,27 @@ textarea:focus-visible,
 
 .data-table tbody tr.selected {
   background: #e9ecef;
+}
+
+#employees-table th:nth-child(1), #employees-table td:nth-child(1) { width: 64px; }
+#employees-table th:nth-child(3), #employees-table td:nth-child(3) { width: 70px; }
+#employees-table th:nth-child(4), #employees-table td:nth-child(4) { width: 130px; white-space: normal; }
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.row-actions .btn {
+  padding: 4px 8px;
+}
+
+.delete-confirm-text {
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-basis: 100%;
 }
 
 #needs-attention {

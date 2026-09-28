@@ -494,3 +494,70 @@ non-zip upload rejection, sessions invalidated after Import/Clear, a
 rejected Import leaving the existing session and data untouched). Full
 suite: 152 → 163 tests, all passing; `go vet` clean; all four platform
 binaries rebuild.
+
+## Post-handover: Edit and Delete for employees (2026-09-28, user-requested feature)
+
+The user asked: "we need to add an edit option in the employees tab.
+any name or date corrections need complete deletion." Read as two
+things once the existing code was checked: (1) there was no way to
+correct an existing employee's details except by knowing this trick —
+`POST /employees` already upserts by `employee_id`, preserving photo,
+crop and export history (`employees.Manager.Save`, unchanged) — but
+nothing in the UI exposed that, so a real correction meant re-typing
+every field from scratch; and (2) there was no Delete at all, anywhere
+in the app, so the one field that genuinely *can't* be corrected in
+place — `employee_id`, the primary key — had no path to a fix either.
+Both are now in the Employees tab (Step 2).
+
+**Edit** reuses the existing upsert wholesale — no backend change
+needed for it. The Employees table gained an Actions column with
+per-row **Edit**/**Delete** buttons (row-click still just selects the
+preview, unaffected — Edit/Delete are separate, explicit actions).
+Edit pre-fills the Add-employee form from that row, locks the
+`employee_id` field (`readOnly`, with a hint explaining why), retitles
+the form to "Edit employee — `<id>`", and changes the submit button to
+"Save changes" with a "Cancel" to back out. Submitting goes through the
+exact same `POST /employees` call as Add, so photo/crop/export history
+survive automatically — verified with a real correction (deliberately
+seeded a typo, "Prya Rao" → "Priya Rao", confirmed both the live
+preview and `GET /api/employees` reflect the fix, `employee_id`/
+`join_date`/photo untouched).
+
+**Delete** is new end to end: `employees.Store.Delete`/
+`employees.Manager.Delete` (removes the record, returns it so the
+caller can also clean up its photo) and `DELETE /employees/{id}`
+(`RequireAuth`, same permission level as every other employee-editing
+route, matching the spec's "Operator: employees, photos and export" —
+this was never admin-gated territory). The handler also deletes the
+employee's photo file from `data/photos/` if it had one, and logs
+`employee_deleted`. The frontend's Delete button swaps that row's
+action cell into an inline "Delete this employee? [Delete] [Cancel]"
+— the same swap-the-row-in-place pattern the Users page already uses
+for Reset PIN — rather than a native `confirm()` dialog, which this
+app doesn't use anywhere.
+
+**A real bug found via testing, not just read through:** the new
+Cancel button (`class="btn ghost"` + the `hidden` attribute) never
+actually hid, because `.btn` sets its own `display`, and an *author*
+stylesheet rule always wins over the browser's built-in
+`[hidden]{display:none}` regardless of selector specificity — so the
+button was visible from the very first render, before any edit had
+even started. Every other `.hidden`-toggled element in this codebase
+(`step1.js`'s `formWrap`, `step4.js`'s `progressBox`/`noPhotoWarning`)
+happens to be a plain `<div>`/`<p>` with no such conflicting rule, so
+this had never surfaced before. Fixed with one global rule —
+`[hidden]{display:none!important}` in `app.css` — rather than a
+one-off fix on this button, since the exact same trap is waiting for
+the next `.hidden`-toggled `.btn` anyone adds. Confirmed via
+`offsetParent` checks in a real browser, both that Cancel starts
+hidden and that it re-hides correctly after use.
+
+Verified with a real browser click-through, not just Go tests: edit a
+typo and confirm it sticks (above), delete an employee and confirm the
+inline confirm step appears and works, confirm the table/preview
+counter update immediately, and confirm Cancel correctly reverts the
+form to a clean Add state. Backed by 6 new Go tests (3
+`employees.Manager.Delete`, 3 `DELETE /employees/{id}` handler-level:
+photo file removal, 404 for an unknown ID, 401 unauthenticated). Full
+suite: 163 → 169 tests, all passing; `go vet` clean; all four platform
+binaries rebuild.
