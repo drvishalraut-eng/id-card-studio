@@ -12,7 +12,7 @@
 9. [x] Export endpoint that saves PDFs into month folders and records exports. Tests.
 10. [x] `scripts/vendor.*`, fetching and committing the pinned libraries and fonts.
 11. [x] Frontend shell: embed, first-run setup, login, top bar, routing, API client and presence heartbeat.
-12. [ ] Users page and Activity page.
+12. [x] Users page and Activity page.
 13. [ ] Card renderer module, matching the reference exactly, with the live preview and navigation.
 14. [ ] Wizard Step 1: clients dropdown, add/edit, SVG upload or paste, the Claude prompt, and live preview.
 15. [ ] `scripts/make_template.py` and the committed Excel template.
@@ -70,6 +70,9 @@
 - Direct hash navigation to `#/users` by a non-admin redirects to `#/wizard` rather than showing an error. Reason: the top bar already hides the Users tab for non-admins per spec ("Users (Admin only)"); a stray/stale link should just fall back to the tab that *is* available, not dead-end on a permissions error.
 - Users page and Activity page (task 12) and all Wizard content (tasks 13-18) are still `<p class="placeholder">…</p>` stubs at this point — task 11's job was the shell, auth, top bar, routing, API client and presence heartbeat only, not the pages themselves.
 - No browser tool was available this session (Chrome extension not connected) to visually verify the login/setup screens. Verified instead via `curl` (every embedded route — `/`, `/static/js/app.js`, `/static/css/app.css`, `/vendor/fonts/fonts.css`, `/vendor/jspdf.umd.min.js`, `/assets/brand/wcf-logo-color.svg` — returns 200 from a freshly built binary) and careful reading of the JS control flow. A future session with browser tools should do a real visual pass on the setup → login → top bar → sign-out flow before this is considered fully done.
+- The Activity page folds `target` into the Action cell (`"employee_saved · E001"`) rather than adding a 5th column. Reason: the spec's Activity table lists exactly 4 columns (time, user, PC and IP, action), but most log actions are meaningless without their target (e.g. "user_disabled" alone doesn't say who) — appending it to the action text satisfies the literal column list while keeping the entries useful.
+- Reset-PIN's inline row form originally built `id="rp-pin-${username}"` for the label/input pair — found and fixed during this session's re-check: an admin username containing a character invalid in a CSS ID (space, `.`, `:`, etc.) would have broken the `cell.querySelector('#' + id)` lookup silently. Replaced with a module-level incrementing sequence number (`rp-pin-${seq}`) for the id (keeping accessible `label for=`) and direct element references (`.rp-pin`/`.rp-confirm` classes) for reading values, so no user-controlled data ever reaches a selector string.
+- Verified this task's Users/Activity API contracts against the running binary (not just unit tests): full curl flow — setup → add user → list → reset-pin → disable → enable → disable-last-admin (409) → activity query — confirms the JSON field names (`username/name/role/status/last_login`, `ts/username/ip/host/action/target`) match exactly what `users.js`/`activity.js` read.
 
 ## Blockers
 (none yet)

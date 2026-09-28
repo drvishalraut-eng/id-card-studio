@@ -2,6 +2,8 @@ import { api } from './api.js';
 import { renderSetup, renderLogin } from './auth.js';
 import { renderTopbar, wireTopbar } from './topbar.js';
 import { startPresence, stopPresence, setStep } from './presence.js';
+import { renderUsers } from './users.js';
+import { renderActivity } from './activity.js';
 
 const root = document.getElementById('app');
 let currentUser = null;
@@ -46,9 +48,9 @@ function renderShell() {
 
 function renderView(path, view) {
   if (path === '/users') {
-    view.innerHTML = '<p class="placeholder">Users page coming soon.</p>';
+    renderUsers(view);
   } else if (path === '/activity') {
-    view.innerHTML = '<p class="placeholder">Activity page coming soon.</p>';
+    renderActivity(view);
   } else {
     view.innerHTML = '<p class="placeholder">Wizard coming soon.</p>';
   }
