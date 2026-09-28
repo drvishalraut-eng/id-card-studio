@@ -21,7 +21,7 @@
 18. [x] Wizard Step 4: filters, grouped selection with shift-range, and PDF/ZIP export with progress.
 19. [x] Under the hood panel.
 20. [x] `scripts/build.*`: cross-compile and test all four binaries.
-21. [ ] End-to-end smoke test, README (setup, build, running on a LAN, backup by copying `data/`, the Windows OneDrive Desktop note, troubleshooting), cleanup pass, and the Handover section.
+21. [x] End-to-end smoke test, README (setup, build, running on a LAN, backup by copying `data/`, the Windows OneDrive Desktop note, troubleshooting), cleanup pass, and the Handover section.
 
 ## Decisions
 - Installed missing prerequisites without prompting: Go 1.27 via `winget install GoLang.Go`, `openpyxl` via `python -m pip install --user openpyxl`. Reason: rule 7 allows unattended install of missing tools.
@@ -114,6 +114,95 @@
 - `scripts/build.sh`/`.ps1` run `go vet` and `go test ./...` first and abort on any failure, then cross-compile into `dist/<goos>-<goarch>/idcard(.exe)` — one self-contained, ready-to-copy portable folder per platform (matching the runtime layout section's flat `idcard(.exe)` + `config.json` + `data/` next to each other), rather than a single `dist/` folder with OS-suffixed filenames. Both scripts were actually run this session (not just written): all four cross-compiles (`windows/amd64`, `darwin/arm64`, `darwin/amd64`, `linux/amd64`) succeed with `CGO_ENABLED=0`, and the native `windows/amd64` output was smoke-tested by copying it to a clean scratch folder and hitting `/` and `/api/setup` on it directly — a real end-to-end check that the portable, from-any-folder design actually works, not just that compilation succeeds.
 - "test all four binaries" is interpreted as running the full Go test suite as a build gate (via `go test ./...`) rather than literally executing each cross-compiled binary — three of the four target platforms (darwin/arm64, darwin/amd64, linux/amd64) can't be executed on this Windows development machine at all. The one binary that *can* run natively here (windows/amd64) was smoke-tested for real, as above.
 - **Found and fixed a real spec-compliance gap during the final cleanup pass:** the runtime layout explicitly lists `data/logos/<client_id>.svg` as a file, but `internal/clients` had been storing each client's logo SVG *inline inside `clients.json`* since task 7 — `data/logos/` was being created (task 2) but nothing ever wrote to it. Fixed by making `clients.Manager` (not `Store`) own logo file I/O: `Create`/`Update` write `data/logos/<id>.svg` only *after* the corresponding `clients.json` metadata write succeeds (avoiding an orphaned logo file if the metadata write is rejected, e.g. a code collision), and `List`/`FindByCode` read the file back to populate `Client.Logo` for callers. The **API contract is completely unchanged** — `GET`/`POST`/`PUT /api/clients` still return the logo inline as SVG text, since the frontend's inline-embed-and-namespace rendering approach (task 13) depends on having the raw text, not a URL — only the on-disk *persistence* mechanism changed, verified with new tests (`clients.json` never contains the SVG; the file at `data/logos/<id>.svg` has the exact bytes; `Update` with no new logo preserves the existing file's content) and an end-to-end server smoke test.
+- The cleanup pass cross-checked every JSON data-model struct (`User`, `Employee`, `Client`, activity/presence `Entry`) field-by-field against the spec's literal `{...}` shape listings — all matched exactly, no further changes needed there.
+- Cleanup also confirmed: no `TODO`/`FIXME`/`console.log`/`debugger` left in any shipped file, every frontend JS module is actually imported somewhere (no orphans), no stray scratch/test artifacts made it into git (checked `git ls-files` against the expected tree), and `dist/`/`data/`/`config.json` stay out of the repo via `.gitignore` as intended.
+- README.md covers setup, building (incl. re-vendoring), running on a LAN, backup-by-copying-`data/`, the Windows OneDrive Desktop redirection note, and troubleshooting, per the task list — with `wcf-logo-color.svg` at 120px as the header image, per the branding spec.
 
 ## Blockers
-(none yet)
+(none — every prerequisite tool was available or installable without a password: Go 1.27 via `winget`, `openpyxl` via `pip install --user`)
+
+## Handover
+
+**Status: all 21 tasks complete.** 145 Go tests pass (`go vet` and
+`go test ./...` clean), all four platform binaries cross-compile, and
+the full app was exercised end-to-end (setup → sign in → add client →
+add employee → upload photo → export a PDF → confirm it lands in the
+right month folder with `exported_at`/`exported_by` recorded) against a
+real built binary, not just via `go test`.
+
+### What was built
+
+- **Backend** (`internal/`, Go standard library only): config +
+  portable data folder, atomic/mutex-protected JSON storage, PIN auth
+  with PBKDF2-SHA256 + lockout + sessions + role middleware, Users API,
+  an append-only Activity log with filtered/paginated queries, presence
+  tracking with a cached reverse-DNS lookup, a Clients API with
+  from-scratch SVG validation (XML-token-walked, not regex) and the
+  Helios seed, an Employees API (upsert/bulk-import/photo
+  upload+serve/client-mapping), and an Export endpoint that saves PDFs
+  into `<Mon YYYY>/` folders and records the export.
+- **Frontend** (`web/`, vanilla JS ES modules, no build step, embedded
+  via `go:embed`): first-run setup, login, a top bar with routing, a
+  card renderer that matches `reference/index.html` pixel-for-pixel
+  (with per-instance id-namespacing so batch export never collides), a
+  live preview with navigation, all 4 Wizard steps (clients;
+  employees/import/Needs-attention; photo queue with crop
+  sliders+drag; export with filters/grouped selection/shift-range and
+  client-side PDF+ZIP generation), a Users page, an Activity page, and
+  the "Under the hood" panel.
+- **Tooling**: `scripts/vendor.*` (checksum-verified fetch of pinned
+  third-party JS libs and fonts), `scripts/make_template.py` (the
+  Excel import template), `scripts/build.*` (cross-compile + test
+  gate).
+
+### How to run it
+
+See README.md for full instructions. Short version: `./scripts/build.sh`
+(or `.ps1`), then run the binary for your platform from `dist/`. It
+creates `config.json` and `data/` next to itself on first run.
+
+### Known limitations / follow-ups a future session should consider
+
+- **No browser tool was available this entire session** (the Chrome
+  extension was never connected). Every frontend behavior was verified
+  by (a) reading the code very carefully, (b) real Node/jsdom
+  interaction tests for the trickiest modules (`card.js`, `step4.js`,
+  `underthehood.js` — dozens of assertions total, and these caught
+  several real bugs plus a few test-authoring bugs), and (c) full
+  `curl`-driven end-to-end flows against the real running server. What
+  was **not** done: an actual visual check in a real browser — CSS
+  layout bugs, the drag-to-crop feel (see below), font rendering, and
+  general polish should get one real look before this ships to users.
+- **Drag-to-crop direction in Step 3 is an untested guess.** The spec
+  says dragging adjusts the crop but doesn't specify which way; the
+  chosen convention ("image follows the cursor") is isolated to one
+  small callback in `step3.js` and trivially flipped if it feels
+  backwards once someone actually drags a photo in a browser.
+- **Step 4's virtualized list assumes a fixed row/header height** (in
+  CSS and in the JS scroll-math) rather than measuring actual rendered
+  heights. This is exactly right as long as nobody changes those CSS
+  rules independently of the JS constants — if `.export-row`/
+  `.export-group-header` height ever changes, update `ROW_HEIGHT`/
+  `HEADER_HEIGHT` at the top of `step4.js` to match.
+- **Presence's "current step"** only reflects the top-level route
+  (Wizard/Users/Activity), not which of the 4 Wizard steps someone is
+  on — see the task-19 decision note if finer granularity is ever
+  wanted.
+- **A stray, small blob-URL leak**: navigating away from Step 3 mid-photo-edit
+  via the step bar (rather than that step's own Cancel/Save) doesn't
+  revoke the abandoned edit's object URL. Bounded (one per abandoned
+  edit, freed on page reload), documented in task 17's decisions.
+- **The exact per-decision reasoning for all 21 tasks is preserved
+  above** under `## Decisions` — many of them are genuine judgment
+  calls where the spec was silent or ambiguous (e.g. one-PDF-per-export-call,
+  card-id-namespacing instead of shared `<symbol>`/`<use>`, username
+  case-insensitivity, the Helios wordmark being hardcoded rather than
+  baked into the seeded logo SVG). Anyone continuing this project should
+  read that list before changing behavior it documents — several of
+  those decisions look arbitrary in isolation but exist for a specific,
+  stated reason.
+- **Nothing was deferred or skipped** — every numbered task, every
+  spec'd endpoint, every UI element described in CLAUDE.md has a
+  corresponding implementation. The one real bug the cleanup pass found
+  (client logos stored inline instead of as `data/logos/<id>.svg`
+  files) was fixed, not just noted.
