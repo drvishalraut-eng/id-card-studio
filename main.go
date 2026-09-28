@@ -4,12 +4,13 @@ package main
 import (
 	"context"
 	"fmt"
-	"io/fs"
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"syscall"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 	"idcardstudio/internal/config"
 	"idcardstudio/internal/employees"
 	"idcardstudio/internal/export"
+	"idcardstudio/internal/netutil"
 	"idcardstudio/internal/presence"
 	"idcardstudio/internal/server"
 	"idcardstudio/web"
@@ -56,26 +58,32 @@ func main() {
 	}
 	api := server.New(authManager, activityLog, presenceManager, clientsManager, employeesManager, exportManager, info)
 
-	assets, err := fs.Sub(web.Assets, "assets")
-	if err != nil {
-		log.Fatalf("load embedded assets: %v", err)
-	}
-
 	mux := http.NewServeMux()
-	mux.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.FS(assets))))
 	mux.Handle("/api/", http.StripPrefix("/api", api.Handler()))
+	mux.Handle("/", http.FileServer(http.FS(web.FS)))
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf("0.0.0.0:%d", cfg.Port),
 		Handler: mux,
 	}
 
+	urls := netutil.LANURLs(cfg.Port)
 	go func() {
 		log.Printf("ID Card Studio listening on %s", srv.Addr)
+		for _, u := range urls {
+			log.Printf("  %s", u)
+		}
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("server error: %v", err)
 		}
 	}()
+
+	if cfg.OpenBrowser {
+		openURL := fmt.Sprintf("http://localhost:%d", cfg.Port)
+		if err := openBrowser(openURL); err != nil {
+			log.Printf("could not open a browser automatically: %v", err)
+		}
+	}
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
@@ -85,5 +93,17 @@ func main() {
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Printf("graceful shutdown failed: %v", err)
+	}
+}
+
+// openBrowser opens url in the host's default browser.
+func openBrowser(url string) error {
+	switch runtime.GOOS {
+	case "windows":
+		return exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+	case "darwin":
+		return exec.Command("open", url).Start()
+	default:
+		return exec.Command("xdg-open", url).Start()
 	}
 }
