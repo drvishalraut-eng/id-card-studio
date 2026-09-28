@@ -11,7 +11,7 @@ const PAIR_WIDTH = CARD_WIDTH * 2 + GAP;
 export function createPreview(container) {
   let items = []; // [{employee, client}]
   let index = 0;
-  let override = null; // { client } — Step 1's "preview this client's branding" mode
+  let override = null; // { client, employee } — an in-progress, not-yet-saved draft (Step 1's client form, Step 2's employee form)
   let draftPhoto = null; // { src, crop } — Step 3's "photo being edited, not yet saved" for the CURRENT item
   let photoDragHandler = null; // (dxPercent, dyPercent) => void, set while Step 3 is editing a crop
 
@@ -68,7 +68,9 @@ export function createPreview(container) {
 
     if (override) {
       client = override.client;
-      counterText = client ? escapeHtml(client.name) : '0 / 0';
+      employee = override.employee;
+      instanceId = employee && employee.employee_id ? employee.employee_id.replace(/[^A-Za-z0-9_-]/g, '') || 'preview-draft' : 'preview';
+      counterText = employee ? escapeHtml(employee.name || 'New employee') : client ? escapeHtml(client.name) : '0 / 0';
     } else {
       const cur = current();
       employee = cur ? cur.employee : null;
@@ -152,11 +154,13 @@ export function createPreview(container) {
       render();
     },
     currentIndex: () => index,
-    // setOverride shows client's branding on a blank (no employee) card,
-    // suspending normal navigation — Step 1's "preview while editing" mode.
-    // Pass null (or call clearOverride) to return to the employee list.
-    setOverride(client) {
-      override = { client };
+    // setOverride shows an in-progress, not-yet-saved draft — client
+    // branding alone (Step 1, employee omitted) or a full employee+client
+    // card (Step 2's Add/Edit form) — suspending normal prev/next
+    // navigation. Pass null (or call clearOverride) to return to the
+    // employee list.
+    setOverride(client, employee) {
+      override = { client: client || null, employee: employee || null };
       render();
     },
     clearOverride() {

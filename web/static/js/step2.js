@@ -211,6 +211,31 @@ export function renderStep2(container, deps) {
       : '<tr><td colspan="4">No employees match.</td></tr>';
   }
 
+  // currentDraftEmployee builds an Employee-shaped object from the form's
+  // current (possibly unsaved) values, so the preview can show it live —
+  // preserving photo/crop from the employee being edited, since this form
+  // never touches those directly.
+  function currentDraftEmployee() {
+    const base = editingId ? employees.find((emp) => emp.employee_id === editingId) : null;
+    return {
+      employee_id: idInput.value.trim(),
+      name: addForm.name.value.trim(),
+      role: addForm.role.value.trim(),
+      client_code: addForm.client.value,
+      join_date: addForm.join_date.value,
+      photo: base ? base.photo : '',
+      crop: base ? base.crop : { zoom: 1, x: 50, y: 50 },
+    };
+  }
+
+  function updatePreviewDraft() {
+    const draft = currentDraftEmployee();
+    preview.setOverride(knownClient(draft.client_code), draft);
+  }
+
+  addForm.addEventListener('input', updatePreviewDraft);
+  addForm.client.addEventListener('change', updatePreviewDraft);
+
   function startEdit(employee) {
     editingId = employee.employee_id;
     addError.textContent = '';
@@ -227,6 +252,7 @@ export function renderStep2(container, deps) {
     submitBtn.textContent = 'Save changes';
     cancelBtn.hidden = false;
     addForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    updatePreviewDraft();
   }
 
   function stopEdit() {
@@ -239,6 +265,7 @@ export function renderStep2(container, deps) {
     submitBtn.textContent = 'Add employee';
     cancelBtn.hidden = true;
     addForm.reset();
+    preview.clearOverride();
   }
 
   cancelBtn.addEventListener('click', stopEdit);
@@ -282,7 +309,10 @@ export function renderStep2(container, deps) {
 
     selectedId = id;
     const index = employees.findIndex((emp) => emp.employee_id === selectedId);
-    if (index >= 0) preview.setIndex(index);
+    if (index >= 0) {
+      preview.clearOverride();
+      preview.setIndex(index);
+    }
     renderTable();
   });
 
@@ -361,6 +391,8 @@ export function renderStep2(container, deps) {
 
       stopEdit();
       await reloadEmployees();
+      const savedIndex = employees.findIndex((emp) => emp.employee_id === saved.employee_id);
+      if (savedIndex >= 0) preview.setIndex(savedIndex);
     } catch (err) {
       addError.textContent = err.message;
     }

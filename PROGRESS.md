@@ -561,3 +561,48 @@ form to a clean Add state. Backed by 6 new Go tests (3
 photo file removal, 404 for an unknown ID, 401 unauthenticated). Full
 suite: 163 → 169 tests, all passing; `go vet` clean; all four platform
 binaries rebuild.
+
+## Post-handover: live preview for the Employees Add/Edit form (2026-09-28, user-requested)
+
+The user asked why the preview doesn't update live while editing on
+Step 2 ("why doesn't the left side preview live as we make changes?")
+— a direct follow-up to the Edit feature just added. Checking Step 1's
+Add/Edit *client* form confirmed it already does exactly this (a
+`form.addEventListener('input', ...)` calling `preview.setOverride()`
+on every keystroke, per spec's "The preview updates live" for Step 1)
+— Step 2's form had never gotten the same treatment, since until this
+session there wasn't an Add/Edit form on Step 2 worth watching live.
+
+**`preview.js`'s `setOverride` was generalized** from
+`setOverride(client)` (Step 1: client branding on a blank card) to
+`setOverride(client, employee)` (Step 2: a full draft employee+client
+card) — a strict superset, so every existing Step 1 call site
+(`setOverride(client)`, employee omitted) needed no change at all.
+
+**`step2.js`** now builds a draft `Employee`-shaped object from the
+Add/Edit form's current values on every `input` event (and the client
+`<select>`'s `change`), preserving the photo/crop of the employee being
+edited (this form never touches those) so the card doesn't flicker to
+a silhouette mid-edit. `startEdit()` shows the override immediately
+(before any keystroke, so clicking Edit alone already switches the
+preview to that employee); `stopEdit()` (Cancel, or after a successful
+save) clears it. A plain row click — unrelated to editing — explicitly
+clears any active override first, so browsing to a different employee
+always takes visible effect even mid-edit. After a successful Add or
+Edit, the preview explicitly re-selects the saved employee by index
+(mirroring Step 1's own post-save `setOverride(saved)`), so the user
+lands on normal browse mode looking at exactly what they just saved,
+nav arrows working again.
+
+Verified with a real click-through: typed a brand-new employee ID into the empty
+Add form and watched the preview switch instantly to a blank "New
+employee" draft card; typed a name, picked a client, and set a join
+date, each reflected on the card within the same interaction (Helios
+logo/tagline appeared the instant the client was chosen); saved it and
+confirmed normal browsing resumed on the newly saved employee; then
+clicked Edit on a different, already-saved employee, edited its Role
+live, and confirmed Cancel discarded the unsaved edit and returned the
+preview to whatever was showing before — no stale draft, no data loss.
+Purely a frontend change (`preview.js`, `step2.js`); no Go tests apply
+and none were added. Full Go suite still 169/169 passing (unaffected);
+all four platform binaries rebuild.
