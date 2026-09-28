@@ -76,20 +76,22 @@ function photoHtml(employee) {
   return SILHOUETTE_SVG;
 }
 
-// renderFront returns the card-front HTML for employee (using client for
-// the logo/tagline), or a blank placeholder card when employee is null —
-// the state shown before any employee/client is selected.
+// renderFront returns the card-front HTML. client controls the logo and
+// tagline independently of employee, so a client's branding can be
+// previewed (Step 1) before any employee is selected: pass employee=null
+// with a real client to preview just the branding on a blank card, or
+// both null for the fully blank placeholder shown before any client
+// exists at all.
 export function renderFront(employee, client, instanceId) {
-  const resolvedClient = employee ? client : null;
   const name = employee ? employee.name : '';
   const role = employee ? employee.role : '';
   const id = employee ? employee.employee_id : '';
   const joinDate = employee ? formatJoinDate(employee.join_date) : '';
-  const tagline = taglineLines(resolvedClient);
+  const tagline = taglineLines(client);
 
   return `<div class="card front">
     <div class="slot"></div>
-    <div class="brand">${brandHtml(resolvedClient, instanceId)}</div>
+    <div class="brand">${brandHtml(client, instanceId)}</div>
     <div class="photo">${photoHtml(employee)}</div>
     <h1>${escapeHtml(name)}</h1>
     <p class="role">${escapeHtml(role)}</p>

@@ -239,6 +239,32 @@ textarea:focus-visible,
   padding: 24px;
 }
 
+.wizard-panel h3 {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 24px 0 4px;
+}
+
+.row-inline {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+#claude-prompt {
+  font-size: 12px;
+  line-height: 1.5;
+  resize: vertical;
+  background: #fff;
+}
+
 .step-bar {
   display: flex;
   gap: 8px;

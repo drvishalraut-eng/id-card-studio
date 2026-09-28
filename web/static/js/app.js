@@ -54,7 +54,7 @@ function renderView(path, view) {
   } else if (path === '/activity') {
     renderActivity(view);
   } else {
-    renderWizard(view);
+    renderWizard(view, currentUser);
   }
 }
 

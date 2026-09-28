@@ -11,6 +11,7 @@ const PAIR_WIDTH = CARD_WIDTH * 2 + GAP;
 export function createPreview(container) {
   let items = []; // [{employee, client}]
   let index = 0;
+  let override = null; // { client } — Step 1's "preview this client's branding" mode
 
   container.innerHTML = `
     <div class="preview-scale-wrap">
@@ -40,10 +41,23 @@ export function createPreview(container) {
   }
 
   function render() {
-    const cur = current();
-    const employee = cur ? cur.employee : null;
-    const client = cur ? cur.client : null;
-    const instanceId = employee ? employee.employee_id : 'preview';
+    let employee = null;
+    let client = null;
+    let instanceId = 'preview';
+    let counterText = '0 / 0';
+    let canNav = false;
+
+    if (override) {
+      client = override.client;
+      counterText = client ? escapeHtml(client.name) : '0 / 0';
+    } else {
+      const cur = current();
+      employee = cur ? cur.employee : null;
+      client = cur ? cur.client : null;
+      instanceId = employee ? employee.employee_id : 'preview';
+      counterText = employee ? `${index + 1} / ${items.length} · ${escapeHtml(employee.name)}` : '0 / 0';
+      canNav = items.length > 1;
+    }
 
     pair.innerHTML = renderFront(employee, client, instanceId) + renderBack(instanceId);
 
@@ -52,21 +66,18 @@ export function createPreview(container) {
     wrap.style.height = `${CARD_HEIGHT * scale}px`;
     pair.style.transform = `scale(${scale})`;
 
-    counter.textContent = employee
-      ? `${index + 1} / ${items.length} · ${escapeHtml(employee.name)}`
-      : '0 / 0';
-    const canNav = items.length > 1;
+    counter.textContent = counterText;
     prevBtn.disabled = !canNav;
     nextBtn.disabled = !canNav;
   }
 
   prevBtn.addEventListener('click', () => {
-    if (!items.length) return;
+    if (override || !items.length) return;
     index = (index - 1 + items.length) % items.length;
     render();
   });
   nextBtn.addEventListener('click', () => {
-    if (!items.length) return;
+    if (override || !items.length) return;
     index = (index + 1) % items.length;
     render();
   });
@@ -89,6 +100,17 @@ export function createPreview(container) {
       render();
     },
     currentIndex: () => index,
+    // setOverride shows client's branding on a blank (no employee) card,
+    // suspending normal navigation — Step 1's "preview while editing" mode.
+    // Pass null (or call clearOverride) to return to the employee list.
+    setOverride(client) {
+      override = { client };
+      render();
+    },
+    clearOverride() {
+      override = null;
+      render();
+    },
     // destroy removes the window resize listener; callers must invoke this
     // before discarding a preview instance (e.g. navigating away and back),
     // or it keeps running render() against detached DOM forever.
