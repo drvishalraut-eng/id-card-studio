@@ -15,7 +15,7 @@
 12. [x] Users page and Activity page.
 13. [x] Card renderer module, matching the reference exactly, with the live preview and navigation.
 14. [x] Wizard Step 1: clients dropdown, add/edit, SVG upload or paste, the Claude prompt, and live preview.
-15. [ ] `scripts/make_template.py` and the committed Excel template.
+15. [x] `scripts/make_template.py` and the committed Excel template.
 16. [ ] Wizard Step 2: Excel/CSV import, the Needs attention mapping, the add-employee form, search and filter.
 17. [ ] Wizard Step 3: photo queue, upload and resize, crop sliders and drag, save and next.
 18. [ ] Wizard Step 4: filters, grouped selection with shift-range, and PDF/ZIP export with progress.
@@ -86,6 +86,9 @@
 - The Claude-prompt text in `step1.js` is a verbatim copy of the block in CLAUDE.md's "Claude prompt shown in the Add client form" section — copied character-for-character (including numbering and the exact `×`/em-dash-free wording) rather than paraphrased, since operators will literally copy-paste this into a Claude conversation.
 - Choosing an existing client in the dropdown updates the live preview for every signed-in user (Admin or Operator), but only an Admin additionally gets the pre-filled edit form — matching "Clients are view-only" for Operators without a separate read-only form UI nobody asked for.
 - The add/edit client form re-fetches the full client list (`GET /api/clients`) after a successful save rather than splicing the returned client into a locally-held array. Reason: simplest way to stay in sync with the server's slugified id and any other server-side normalization (uppercased tagline, etc.), and this is a low-traffic internal tool where the extra round trip is inconsequential.
+- `scripts/make_template.py`'s Clients sheet seeds exactly one row: `Helios` — matching the client always seeded on first run. Reason: the template is a build-time asset (generated once, committed, not regenerated per-deployment against live data), so it can't know a real deployment's actual client roster; it exists to demonstrate the shape (a `client_code` column feeding the Employees sheet's dropdown) and give new users something that resolves immediately, not to be an authoritative client list — unmatched codes typed by hand are exactly what Step 2's "Needs attention" mapping (task 16) is for.
+- No route/handler code was needed to serve `web/assets/employees_template.xlsx` — it's picked up automatically by the existing embedded-`FS` file server (`http.FileServer(http.FS(web.FS))`) from task 11, since `//go:embed index.html static assets vendor` already covers the whole `assets/` tree. Verified by hitting `/assets/employees_template.xlsx` on a freshly built binary and re-opening the downloaded bytes with `openpyxl`.
+- The actual "Download template" link in Step 2's UI is out of scope here — task 15 is specifically the script + the committed `.xlsx` asset; the link itself lands with Step 2 (task 16).
 
 ## Blockers
 (none yet)
