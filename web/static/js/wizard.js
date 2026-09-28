@@ -1,12 +1,13 @@
 // The Wizard view: the 4-step left panel (520px, #F4F4F2) and the live
-// preview on the right (#2E3238). Steps 3-4 are still placeholders, built
-// out in later tasks; this module owns the shared shell, step navigation,
+// preview on the right (#2E3238). Step 4 is still a placeholder, built
+// out in a later task; this module owns the shared shell, step navigation,
 // data loading and the preview that every step shares.
 import { api } from './api.js';
 import { createPreview } from './preview.js';
 import { escapeHtml } from './util.js';
 import { renderStep1 } from './step1.js';
 import { renderStep2 } from './step2.js';
+import { renderStep3 } from './step3.js';
 
 const STEPS = ['Client', 'Employees', 'Photos', 'Export'];
 
@@ -60,6 +61,14 @@ export async function renderWizard(view, user) {
       btn.classList.toggle('active', Number(btn.dataset.step) === activeStep);
     }
 
+    // Leaving Step 3 mid-edit (without going through its own Save/Cancel)
+    // must not leave the preview stuck showing an unsaved draft photo or
+    // still intercepting drags on every other step.
+    if (activeStep !== 2) {
+      currentPreview.setDraftPhoto(null);
+      currentPreview.setPhotoDragHandler(null);
+    }
+
     if (activeStep === 0) {
       renderStep1(stepContent, {
         user,
@@ -73,6 +82,16 @@ export async function renderWizard(view, user) {
     } else if (activeStep === 1) {
       renderStep2(stepContent, {
         user,
+        clients,
+        employees: employeeList,
+        preview: currentPreview,
+        onEmployeesChanged(updated) {
+          employeeList = updated;
+          refreshPreviewItems();
+        },
+      });
+    } else if (activeStep === 2) {
+      renderStep3(stepContent, {
         clients,
         employees: employeeList,
         preview: currentPreview,

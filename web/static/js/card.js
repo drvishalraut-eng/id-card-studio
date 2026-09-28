@@ -64,10 +64,12 @@ function taglineLines(client) {
   return ['LINE ONE', 'LINE TWO', 'LINE THREE'];
 }
 
-function photoHtml(employee) {
-  if (employee && employee.photo) {
-    const crop = employee.crop || { zoom: 1, x: 50, y: 50 };
-    const src = `/api/employees/${encodeURIComponent(employee.employee_id)}/photo`;
+// photoSrcOverride, when given, is used in place of the server photo URL —
+// Step 3's "preview a not-yet-uploaded blob" (an object URL) while editing.
+function photoHtml(employee, photoSrcOverride) {
+  const src = photoSrcOverride || (employee && employee.photo ? `/api/employees/${encodeURIComponent(employee.employee_id)}/photo` : null);
+  if (src) {
+    const crop = (employee && employee.crop) || { zoom: 1, x: 50, y: 50 };
     const style =
       `object-position:${crop.x}% ${crop.y}%;` +
       `transform:scale(${crop.zoom});transform-origin:${crop.x}% ${crop.y}%`;
@@ -81,8 +83,8 @@ function photoHtml(employee) {
 // previewed (Step 1) before any employee is selected: pass employee=null
 // with a real client to preview just the branding on a blank card, or
 // both null for the fully blank placeholder shown before any client
-// exists at all.
-export function renderFront(employee, client, instanceId) {
+// exists at all. photoSrcOverride is Step 3's not-yet-uploaded preview.
+export function renderFront(employee, client, instanceId, photoSrcOverride) {
   const name = employee ? employee.name : '';
   const role = employee ? employee.role : '';
   const id = employee ? employee.employee_id : '';
@@ -92,7 +94,7 @@ export function renderFront(employee, client, instanceId) {
   return `<div class="card front">
     <div class="slot"></div>
     <div class="brand">${brandHtml(client, instanceId)}</div>
-    <div class="photo">${photoHtml(employee)}</div>
+    <div class="photo">${photoHtml(employee, photoSrcOverride)}</div>
     <h1>${escapeHtml(name)}</h1>
     <p class="role">${escapeHtml(role)}</p>
     <dl class="meta">

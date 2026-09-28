@@ -12,6 +12,8 @@ export function createPreview(container) {
   let items = []; // [{employee, client}]
   let index = 0;
   let override = null; // { client } — Step 1's "preview this client's branding" mode
+  let draftPhoto = null; // { src, crop } — Step 3's "photo being edited, not yet saved" for the CURRENT item
+  let photoDragHandler = null; // (dxPercent, dyPercent) => void, set while Step 3 is editing a crop
 
   container.innerHTML = `
     <div class="preview-scale-wrap">
@@ -46,6 +48,7 @@ export function createPreview(container) {
     let instanceId = 'preview';
     let counterText = '0 / 0';
     let canNav = false;
+    let photoSrcOverride = null;
 
     if (override) {
       client = override.client;
@@ -57,9 +60,14 @@ export function createPreview(container) {
       instanceId = employee ? employee.employee_id : 'preview';
       counterText = employee ? `${index + 1} / ${items.length} · ${escapeHtml(employee.name)}` : '0 / 0';
       canNav = items.length > 1;
+
+      if (employee && draftPhoto) {
+        employee = { ...employee, crop: draftPhoto.crop };
+        photoSrcOverride = draftPhoto.src;
+      }
     }
 
-    pair.innerHTML = renderFront(employee, client, instanceId) + renderBack(instanceId);
+    pair.innerHTML = renderFront(employee, client, instanceId, photoSrcOverride) + renderBack(instanceId);
 
     const scale = fitScale();
     wrap.style.width = `${PAIR_WIDTH * scale}px`;
@@ -83,6 +91,34 @@ export function createPreview(container) {
   });
   const onResize = () => render();
   window.addEventListener('resize', onResize);
+
+  // Dragging inside the preview's photo box adjusts the crop (Step 3).
+  // Delegated on `pair` (which persists across renders, unlike its
+  // innerHTML-replaced children) so this needs wiring only once; the
+  // window-level listeners are also attached once and clean up in
+  // destroy(), rather than being re-attached every render.
+  let dragState = null;
+  pair.addEventListener('mousedown', (e) => {
+    if (!photoDragHandler) return;
+    const photoEl = e.target.closest('.photo');
+    if (!photoEl) return;
+    const rect = photoEl.getBoundingClientRect();
+    dragState = { lastX: e.clientX, lastY: e.clientY, rect };
+    e.preventDefault();
+  });
+  const onMouseMove = (e) => {
+    if (!dragState || !photoDragHandler) return;
+    const dxPercent = ((e.clientX - dragState.lastX) / dragState.rect.width) * 100;
+    const dyPercent = ((e.clientY - dragState.lastY) / dragState.rect.height) * 100;
+    dragState.lastX = e.clientX;
+    dragState.lastY = e.clientY;
+    photoDragHandler(dxPercent, dyPercent);
+  };
+  const onMouseUp = () => {
+    dragState = null;
+  };
+  window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('mouseup', onMouseUp);
 
   render();
 
@@ -111,11 +147,27 @@ export function createPreview(container) {
       override = null;
       render();
     },
-    // destroy removes the window resize listener; callers must invoke this
-    // before discarding a preview instance (e.g. navigating away and back),
-    // or it keeps running render() against detached DOM forever.
+    // setDraftPhoto shows src (an object URL for a not-yet-uploaded blob)
+    // and crop on the CURRENT item only, without changing which employee
+    // is selected — Step 3's "editing this photo" mode. Pass null to
+    // revert to the employee's actual saved photo.
+    setDraftPhoto(src, crop) {
+      draftPhoto = src ? { src, crop } : null;
+      render();
+    },
+    // setPhotoDragHandler registers fn(dxPercent, dyPercent) to be called
+    // while the user drags inside the preview's photo box (Step 3's crop
+    // editor); pass null to disable dragging again.
+    setPhotoDragHandler(fn) {
+      photoDragHandler = fn;
+    },
+    // destroy removes this preview's window-level listeners; callers must
+    // invoke this before discarding a preview instance (e.g. navigating
+    // away and back), or they keep running against detached DOM forever.
     destroy() {
       window.removeEventListener('resize', onResize);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
     },
   };
 }
