@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -205,14 +206,27 @@ func UserFromContext(ctx context.Context) (User, bool) {
 
 // RequireXRequestedWith rejects any request missing the required
 // X-Requested-With: idcard header, as a lightweight cross-site request check.
+//
+// A GET photo request is exempt: it's loaded by a plain <img src>, which the
+// browser never attaches custom headers to, so requiring the header there
+// would make every saved photo unloadable. It's still gated by RequireAuth's
+// SameSite=Strict session cookie, which a cross-site <img> can't carry either.
 func RequireXRequestedWith(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if isPhotoGet(r) {
+			next.ServeHTTP(w, r)
+			return
+		}
 		if r.Header.Get(RequestedWithHeader) != RequestedWithValue {
 			writeError(w, http.StatusBadRequest, "missing X-Requested-With: idcard header")
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+func isPhotoGet(r *http.Request) bool {
+	return r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/employees/") && strings.HasSuffix(r.URL.Path, "/photo")
 }
 
 // RequireAuth rejects requests without a valid session and otherwise attaches

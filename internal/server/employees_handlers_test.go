@@ -263,6 +263,51 @@ func TestGetPhotoServesUploadedFile(t *testing.T) {
 	}
 }
 
+// A browser <img src="..."> request never carries custom headers, so the
+// photo GET route must work without X-Requested-With even though every
+// other route requires it.
+func TestGetPhotoWorksWithoutXRequestedWithHeader(t *testing.T) {
+	h := newTestServer(t).Handler()
+	admin := setupAdmin(t, h)
+	doJSON(t, h, http.MethodPost, "/employees", map[string]any{
+		"employee_id": "E001", "name": "Priya Rao", "join_date": "2026-01-15",
+	}, admin)
+
+	var body bytes.Buffer
+	mw := multipart.NewWriter(&body)
+	part, err := mw.CreateFormFile("photo", "photo.jpg")
+	if err != nil {
+		t.Fatalf("CreateFormFile: %v", err)
+	}
+	part.Write(validJPEG)
+	mw.WriteField("zoom", "1")
+	mw.WriteField("x", "50")
+	mw.WriteField("y", "50")
+	if err := mw.Close(); err != nil {
+		t.Fatalf("close multipart writer: %v", err)
+	}
+	uploadReq := httptest.NewRequest(http.MethodPost, "/employees/E001/photo", &body)
+	uploadReq.Header.Set("Content-Type", mw.FormDataContentType())
+	uploadReq.Header.Set(auth.RequestedWithHeader, auth.RequestedWithValue)
+	uploadReq.AddCookie(admin)
+	uploadRec := httptest.NewRecorder()
+	h.ServeHTTP(uploadRec, uploadReq)
+	if uploadRec.Code != http.StatusOK {
+		t.Fatalf("upload: got status %d, body %s", uploadRec.Code, uploadRec.Body)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/employees/E001/photo", nil)
+	req.AddCookie(admin)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("got status %d, body %s, want 200 even without X-Requested-With", rec.Code, rec.Body)
+	}
+	if !bytes.Equal(rec.Body.Bytes(), validJPEG) {
+		t.Fatalf("got %d bytes, want the uploaded JPEG back verbatim", rec.Body.Len())
+	}
+}
+
 func TestGetPhotoReturns404WhenEmployeeHasNoPhoto(t *testing.T) {
 	h := newTestServer(t).Handler()
 	admin := setupAdmin(t, h)

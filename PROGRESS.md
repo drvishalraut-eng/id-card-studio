@@ -273,3 +273,71 @@ only read through carefully again. **A future session with reliable
 click/type tooling should still do a real pass over Steps 3 and 4**,
 and in particular the drag-to-crop direction in Step 3, which task 17's
 decisions already flagged as an untested guess.
+
+## Post-handover: Steps 3 and 4 real click-through (2026-09-28, later same day)
+
+A follow-up session with working mouse/click tooling did the real pass
+over Steps 3 and 4 that the previous entry above flagged as
+outstanding. Real uploads, drags, clicks and an actual export were
+exercised end to end, and it surfaced **one more real bug**, again one
+the Go test suite's own tests couldn't have caught because they craft
+requests directly rather than through a browser:
+
+4. **The photo GET endpoint required the `X-Requested-With: idcard`
+   header, which a plain `<img src="...">` can never send.** Every API
+   route was wrapped in one blanket `RequireXRequestedWith` middleware
+   (`internal/server/server.go`), including
+   `GET /employees/{id}/photo`. `card.js`'s `photoHtml()` renders a
+   saved (non-draft) photo as a bare `<img>` tag — the browser's native
+   image loader, which cannot attach custom headers — so every
+   `<img>` request for a previously-saved photo got a 400 and rendered
+   as a blank grey box, everywhere except Step 3's upload-in-progress
+   view (which uses a client-side object URL instead of hitting this
+   endpoint at all). This silently broke the photo on Step 1, Step 4,
+   and — critically — the actual exported PDF, which renders the same
+   DOM the preview does. It went undetected by every existing Go test
+   because the shared `doJSON` test helper always sets the header by
+   hand. Fixed by exempting exactly `GET /employees/*/photo` from the
+   header check in `RequireXRequestedWith`
+   (`internal/auth/auth.go`) — it's still gated by `RequireAuth`'s
+   `SameSite=Strict` session cookie, which a cross-site `<img>` can't
+   carry either, so this doesn't reopen the CSRF gap the header was
+   for. The POST upload route is unaffected and still requires the
+   header. Three new regression tests cover it: two unit tests on
+   `RequireXRequestedWith` itself (GET photo exempt, POST photo still
+   rejected) and one server-level test uploading then fetching a photo
+   with no header at all.
+
+What was verified with real mouse drags and clicks, against a fresh
+three-employee seed with no photos:
+- **Step 3**: uploaded a real JPEG via `file_upload`, confirmed the
+  crop editor's zoom/horizontal/vertical sliders render and respond to
+  both a direct click-to-position and a native `left_click_drag` on the
+  slider track; dragged directly on the live preview's photo box and
+  confirmed the **drag-to-crop convention flagged as an untested guess
+  in task 17 is correct as shipped** — dragging right/down measurably
+  decreased `crop.x`/`crop.y` (a "grab and pan" feel), read back
+  directly off the range inputs' DOM values; clicked "Save & next" and
+  confirmed the photo and crop persisted to `employees.json` (checked
+  via the live `/api/employees` response) and the queue correctly
+  advanced to the next missing employee, updating the "N / 3 photos
+  done" progress bar each time.
+- **Step 4**: confirmed the client-grouped list, the PHOTO/NO PHOTO
+  badges, the group-header select-all/partial/none checkbox states, a
+  plain row click, a real `shift`-modifier range-click across rows, the
+  "N selected · M shown" count, that **selection survives a search
+  filter change** (spec requirement), the "some selected cards have no
+  photo" warning, and the "Export PDF" → "Export N PDFs (ZIP)" button
+  text switching on selection count. Actually triggered both a
+  single-card export and a 3-card ZIP export (mixing photo and
+  no-photo employees); both produced valid 2-page PDFs on disk under
+  `<export_dir>/<Mon YYYY>/<employee_id>_<Name>.pdf`, and
+  `exported_at`/`exported_by` were correctly recorded and reflected
+  live by the "Not exported" / "Exported" status filter.
+
+All four bugs found across both browser-verification passes are now
+fixed; the full suite is 148 → 152 tests, all passing, `go vet` clean,
+and all four platform binaries rebuild successfully via
+`scripts/build.sh`. Every piece of Step 3 and Step 4 described in
+CLAUDE.md has now been exercised with a real mouse and a real upload,
+not just read.

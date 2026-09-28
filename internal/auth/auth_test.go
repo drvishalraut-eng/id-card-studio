@@ -252,3 +252,39 @@ func TestRequireXRequestedWithAllowsCorrectHeader(t *testing.T) {
 		t.Fatal("expected the handler to run with the correct header")
 	}
 }
+
+// A browser <img src="..."> request can never carry a custom header, so a
+// GET photo request must be let through without one.
+func TestRequireXRequestedWithExemptsPhotoGet(t *testing.T) {
+	ran := false
+	handler := RequireXRequestedWith(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ran = true
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/employees/E001/photo", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if !ran {
+		t.Fatal("expected a GET photo request to be let through without the header")
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("got status %d, want 200", rec.Code)
+	}
+}
+
+// The exemption must be GET-only: uploading a photo is a state change and
+// still needs the cross-site request check.
+func TestRequireXRequestedWithStillRejectsPhotoPostWithoutHeader(t *testing.T) {
+	handler := RequireXRequestedWith(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("handler should not run without the header")
+	}))
+
+	req := httptest.NewRequest(http.MethodPost, "/employees/E001/photo", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("got status %d, want 400", rec.Code)
+	}
+}
