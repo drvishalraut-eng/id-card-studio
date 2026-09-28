@@ -14,7 +14,7 @@ func (s *Server) registerClientRoutes(mux *http.ServeMux) {
 }
 
 func (s *Server) handleListClients(w http.ResponseWriter, r *http.Request) {
-	list, err := s.Clients.Store.List()
+	list, err := s.Clients.List()
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "could not load clients: "+err.Error())
 		return

@@ -1,7 +1,9 @@
 package clients
 
 import (
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -9,7 +11,8 @@ const validLogo = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 40">
 
 func newTestManager(t *testing.T) *Manager {
 	t.Helper()
-	return NewManager(filepath.Join(t.TempDir(), "clients.json"))
+	dir := t.TempDir()
+	return NewManager(filepath.Join(dir, "clients.json"), filepath.Join(dir, "logos"))
 }
 
 func TestCreateGeneratesSlugID(t *testing.T) {
@@ -122,7 +125,7 @@ func TestSeedHeliosOnEmptyStore(t *testing.T) {
 		t.Fatalf("SeedHelios: %v", err)
 	}
 
-	c, ok, err := m.Store.FindByCode("Helios")
+	c, ok, err := m.FindByCode("Helios")
 	if err != nil {
 		t.Fatalf("FindByCode: %v", err)
 	}
@@ -158,5 +161,57 @@ func TestSeedHeliosSkipsWhenClientsExist(t *testing.T) {
 	}
 	if len(clients) != 1 {
 		t.Fatalf("got %d clients, want 1 (seeding should have been skipped)", len(clients))
+	}
+}
+
+func TestLogoIsPersistedAsItsOwnFileNotInsideClientsJSON(t *testing.T) {
+	dir := t.TempDir()
+	clientsPath := filepath.Join(dir, "clients.json")
+	m := NewManager(clientsPath, filepath.Join(dir, "logos"))
+
+	c, err := m.Create("Acme", "ACME", []string{"a", "b", "c"}, validLogo)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	logoPath := filepath.Join(m.LogosDir, c.ID+".svg")
+	data, err := os.ReadFile(logoPath)
+	if err != nil {
+		t.Fatalf("expected a logo file at %s: %v", logoPath, err)
+	}
+	if string(data) != validLogo {
+		t.Fatalf("got logo file contents %q, want %q", data, validLogo)
+	}
+
+	rawJSON, err := os.ReadFile(clientsPath)
+	if err != nil {
+		t.Fatalf("read clients.json: %v", err)
+	}
+	if strings.Contains(string(rawJSON), "<svg") {
+		t.Fatalf("clients.json should not contain the logo SVG inline, got: %s", rawJSON)
+	}
+}
+
+func TestUpdateWithoutNewLogoKeepsExistingFileContent(t *testing.T) {
+	m := newTestManager(t)
+	c, err := m.Create("Acme", "ACME", []string{"a", "b", "c"}, validLogo)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	updated, err := m.Update(c.ID, "Acme Corp", "ACME", []string{"a", "b", "c"}, "")
+	if err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	if updated.Logo != validLogo {
+		t.Fatalf("got Logo=%q, want the unchanged original file content", updated.Logo)
+	}
+
+	list, err := m.List()
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if list[0].Logo != validLogo {
+		t.Fatalf("List() should also populate Logo from disk, got %q", list[0].Logo)
 	}
 }

@@ -43,7 +43,7 @@ func main() {
 	authManager := auth.NewManager(filepath.Join(data.Root, "users.json"))
 	activityLog := activity.New(filepath.Join(data.Root, "activity.jsonl"))
 	presenceManager := presence.New()
-	clientsManager := clients.NewManager(filepath.Join(data.Root, "clients.json"))
+	clientsManager := clients.NewManager(filepath.Join(data.Root, "clients.json"), data.Logos)
 	if err := clientsManager.SeedHelios(); err != nil {
 		log.Fatalf("seed Helios client: %v", err)
 	}

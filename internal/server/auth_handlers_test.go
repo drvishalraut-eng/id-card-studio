@@ -27,7 +27,7 @@ func newTestServer(t *testing.T) *Server {
 		auth.NewManager(filepath.Join(dir, "users.json")),
 		activity.New(filepath.Join(dir, "activity.jsonl")),
 		presence.New(),
-		clients.NewManager(filepath.Join(dir, "clients.json")),
+		clients.NewManager(filepath.Join(dir, "clients.json"), filepath.Join(dir, "logos")),
 		employeesManager,
 		export.New(employeesManager, exportDir),
 		Info{

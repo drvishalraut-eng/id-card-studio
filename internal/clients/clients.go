@@ -6,13 +6,19 @@ package clients
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
 	"idcardstudio/internal/storage"
 )
 
-// Client is one row of clients.json.
+// Client is one row of clients.json, plus its logo. Logo is never actually
+// persisted as part of clients.json (Manager always blanks it before
+// saving and repopulates it after loading) — the canonical bytes live at
+// data/logos/<id>.svg, matching the runtime layout, and reading/writing
+// that file is entirely Manager's job so callers see one unchanged shape.
 type Client struct {
 	ID      string   `json:"id"`
 	Name    string   `json:"name"`
@@ -109,14 +115,68 @@ func (s *Store) Update(id string, fn func(Client) (Client, error)) (Client, erro
 }
 
 // Manager validates client input (name, code, tagline, logo SVG) before
-// writing it to the Store.
+// writing it to the Store, and owns each client's logo file.
 type Manager struct {
-	Store *Store
+	Store    *Store
+	LogosDir string
 }
 
-// NewManager returns a Manager backed by the given clients.json path.
-func NewManager(path string) *Manager {
-	return &Manager{Store: NewStore(path)}
+// NewManager returns a Manager backed by the given clients.json path,
+// storing each client's logo SVG as its own file under logosDir.
+func NewManager(path, logosDir string) *Manager {
+	return &Manager{Store: NewStore(path), LogosDir: logosDir}
+}
+
+func (m *Manager) logoPath(id string) string {
+	return filepath.Join(m.LogosDir, id+".svg")
+}
+
+// readLogo returns the logo file's contents, or "" if it doesn't exist yet
+// (e.g. a client record that failed partway through Create).
+func (m *Manager) readLogo(id string) (string, error) {
+	data, err := os.ReadFile(m.logoPath(id))
+	if os.IsNotExist(err) {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("read logo for %q: %w", id, err)
+	}
+	return string(data), nil
+}
+
+func (m *Manager) writeLogo(id, svg string) error {
+	return storage.WriteFileAtomic(m.logoPath(id), []byte(svg))
+}
+
+// List returns every client with its logo populated from data/logos/.
+func (m *Manager) List() ([]Client, error) {
+	list, err := m.Store.List()
+	if err != nil {
+		return nil, err
+	}
+	for i := range list {
+		logo, err := m.readLogo(list[i].ID)
+		if err != nil {
+			return nil, err
+		}
+		list[i].Logo = logo
+	}
+	return list, nil
+}
+
+// FindByCode looks up a client by its Excel import code (case-insensitive)
+// with its logo populated from data/logos/.
+func (m *Manager) FindByCode(code string) (Client, bool, error) {
+	c, ok, err := m.Store.FindByCode(code)
+	if err != nil || !ok {
+		return Client{}, ok, err
+	}
+	logo, err := m.readLogo(c.ID)
+	if err != nil {
+		return Client{}, false, err
+	}
+	c.Logo = logo
+	return c, true, nil
 }
 
 var nonSlugChars = regexp.MustCompile(`[^a-z0-9]+`)
@@ -179,10 +239,15 @@ func (m *Manager) Create(name, code string, tagline []string, logoSVG string) (C
 	if err != nil {
 		return Client{}, err
 	}
-	c := Client{ID: id, Name: name, Code: code, Logo: logoSVG, Tagline: tags}
+
+	c := Client{ID: id, Name: name, Code: code, Tagline: tags}
 	if err := m.Store.Create(c); err != nil {
 		return Client{}, err
 	}
+	if err := m.writeLogo(id, logoSVG); err != nil {
+		return Client{}, fmt.Errorf("client created but its logo could not be saved: %w", err)
+	}
+	c.Logo = logoSVG
 	return c, nil
 }
 
@@ -207,15 +272,29 @@ func (m *Manager) Update(id, name, code string, tagline []string, logoSVG string
 		}
 	}
 
-	return m.Store.Update(id, func(c Client) (Client, error) {
+	updated, err := m.Store.Update(id, func(c Client) (Client, error) {
 		c.Name = name
 		c.Code = code
 		c.Tagline = tags
-		if logoSVG != "" {
-			c.Logo = logoSVG
-		}
 		return c, nil
 	})
+	if err != nil {
+		return Client{}, err
+	}
+
+	if logoSVG != "" {
+		if err := m.writeLogo(id, logoSVG); err != nil {
+			return Client{}, fmt.Errorf("client updated but its new logo could not be saved: %w", err)
+		}
+		updated.Logo = logoSVG
+		return updated, nil
+	}
+	logo, err := m.readLogo(id)
+	if err != nil {
+		return Client{}, err
+	}
+	updated.Logo = logo
+	return updated, nil
 }
 
 // SeedHelios adds the built-in Helios Material Handling client if the
