@@ -1,13 +1,13 @@
 // The Wizard view: the 4-step left panel (520px, #F4F4F2) and the live
-// preview on the right (#2E3238). Step 4 is still a placeholder, built
-// out in a later task; this module owns the shared shell, step navigation,
-// data loading and the preview that every step shares.
+// preview on the right (#2E3238). This module owns the shared shell, step
+// navigation, data loading and the preview that every step shares.
 import { api } from './api.js';
 import { createPreview } from './preview.js';
 import { escapeHtml } from './util.js';
 import { renderStep1 } from './step1.js';
 import { renderStep2 } from './step2.js';
 import { renderStep3 } from './step3.js';
+import { renderStep4 } from './step4.js';
 
 const STEPS = ['Client', 'Employees', 'Photos', 'Export'];
 
@@ -101,7 +101,14 @@ export async function renderWizard(view, user) {
         },
       });
     } else {
-      stepContent.innerHTML = '<p class="placeholder">Step content coming soon.</p>';
+      renderStep4(stepContent, {
+        clients,
+        employees: employeeList,
+        onEmployeesChanged(updated) {
+          employeeList = updated;
+          refreshPreviewItems();
+        },
+      });
     }
   }
 

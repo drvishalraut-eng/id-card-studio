@@ -13,7 +13,9 @@ export const CARD_WIDTH = 540;
 export const CARD_HEIGHT = 856;
 export const EXPORT_PIXEL_RATIO = 1276 / 540;
 
-const FIXED_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+// FIXED_MONTHS is the fixed English month list used everywhere a date is
+// shown, so the output is identical on every computer regardless of locale.
+export const FIXED_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 // formatJoinDate renders "YYYY-MM-DD" as "DD Mon YYYY" using the fixed
 // English month list, so the result is identical on every computer.
@@ -24,6 +26,13 @@ export function formatJoinDate(isoDate) {
   const month = FIXED_MONTHS[Number(mo) - 1];
   if (!month) return isoDate;
   return `${d} ${month} ${y}`;
+}
+
+// formatISODate renders the date portion of a full ISO timestamp (as
+// exported_at/updated_at come from the server) the same way, by reusing
+// formatJoinDate on its leading "YYYY-MM-DD".
+export function formatISODate(iso) {
+  return iso ? formatJoinDate(String(iso).slice(0, 10)) : '';
 }
 
 // namespaceIds rewrites every id="...", url(#...) and href="#..." in svg to
