@@ -273,18 +273,25 @@ textarea:focus-visible,
   margin: 0 0 20px;
 }
 
-.step-bar .step {
+.step-bar li {
   flex: 1;
+}
+
+.step-bar .step-btn {
+  width: 100%;
+  min-height: 36px;
   text-align: center;
   padding: 8px 4px;
+  border: none;
   border-radius: 6px;
   background: #e7e7e4;
   color: var(--text-muted);
   font-size: 12px;
   font-weight: 600;
+  cursor: pointer;
 }
 
-.step-bar .step.active {
+.step-bar .step-btn.active {
   background: var(--charcoal);
   color: #fff;
 }
@@ -377,6 +384,45 @@ textarea:focus-visible,
   min-height: 36px;
   padding: 4px 10px;
   font-size: 12px;
+}
+
+.data-table tbody tr[data-id] {
+  cursor: pointer;
+}
+
+.data-table tbody tr.selected {
+  background: #e9ecef;
+}
+
+#needs-attention {
+  margin-top: 16px;
+  padding: 12px;
+  background: #fbeaea;
+  border-radius: 8px;
+}
+
+#needs-attention-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#needs-attention-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+
+#import-result ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  font-size: 13px;
+  color: var(--text-muted);
 }
 
 .inline-form {

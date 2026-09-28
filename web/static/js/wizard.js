@@ -1,11 +1,12 @@
 // The Wizard view: the 4-step left panel (520px, #F4F4F2) and the live
-// preview on the right (#2E3238). Steps 2-4 are still placeholders,
-// built out in later tasks; this module owns the shared shell, data
-// loading and the preview/navigation that every step shares.
+// preview on the right (#2E3238). Steps 3-4 are still placeholders, built
+// out in later tasks; this module owns the shared shell, step navigation,
+// data loading and the preview that every step shares.
 import { api } from './api.js';
 import { createPreview } from './preview.js';
 import { escapeHtml } from './util.js';
 import { renderStep1 } from './step1.js';
+import { renderStep2 } from './step2.js';
 
 const STEPS = ['Client', 'Employees', 'Photos', 'Export'];
 
@@ -22,13 +23,14 @@ export async function renderWizard(view, user) {
   view.innerHTML = `
     <aside class="wizard-panel">
       <ol class="step-bar">
-        ${STEPS.map((label, i) => `<li class="step${i === 0 ? ' active' : ''}">${i + 1}. ${label}</li>`).join('')}
+        ${STEPS.map((label, i) => `<li><button type="button" class="step-btn" data-step="${i}">${i + 1}. ${label}</button></li>`).join('')}
       </ol>
       <div class="step-content"></div>
     </aside>
     <section class="wizard-preview"></section>
   `;
 
+  const stepBar = view.querySelector('.step-bar');
   const stepContent = view.querySelector('.step-content');
   currentPreview = createPreview(view.querySelector('.wizard-preview'));
 
@@ -49,16 +51,47 @@ export async function renderWizard(view, user) {
     }));
     currentPreview.setItems(items, true);
   }
-
   refreshPreviewItems();
 
-  renderStep1(stepContent, {
-    user,
-    clients,
-    preview: currentPreview,
-    onClientsChanged(updatedClients) {
-      clients = updatedClients;
-      refreshPreviewItems();
-    },
+  let activeStep = 0;
+
+  function renderActiveStep() {
+    for (const btn of stepBar.querySelectorAll('.step-btn')) {
+      btn.classList.toggle('active', Number(btn.dataset.step) === activeStep);
+    }
+
+    if (activeStep === 0) {
+      renderStep1(stepContent, {
+        user,
+        clients,
+        preview: currentPreview,
+        onClientsChanged(updated) {
+          clients = updated;
+          refreshPreviewItems();
+        },
+      });
+    } else if (activeStep === 1) {
+      renderStep2(stepContent, {
+        user,
+        clients,
+        employees: employeeList,
+        preview: currentPreview,
+        onEmployeesChanged(updated) {
+          employeeList = updated;
+          refreshPreviewItems();
+        },
+      });
+    } else {
+      stepContent.innerHTML = '<p class="placeholder">Step content coming soon.</p>';
+    }
+  }
+
+  stepBar.addEventListener('click', (e) => {
+    const btn = e.target.closest('.step-btn');
+    if (!btn) return;
+    activeStep = Number(btn.dataset.step);
+    renderActiveStep();
   });
+
+  renderActiveStep();
 }
