@@ -1,0 +1,290 @@
+/* Card front/back, matching reference/index.html's card CSS exactly (the
+   general app-shell rules there are not part of this file — those live in
+   app.css, rebuilt for this app's actual UI). Colour tokens are the same
+   --charcoal/--navy/--offwhite/--coral/--gold/--dnavy defined in app.css. */
+
+.card, .card * {
+  margin: 0;
+  box-sizing: border-box;
+}
+
+/* Card: 54 x 85.6 mm at 10 px/mm */
+.card {
+  width: 540px;
+  height: 856px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 32px;
+  flex-shrink: 0;
+}
+
+.slot {
+  position: absolute;
+  top: 30px;
+  left: 50%;
+  width: 120px;
+  height: 22px;
+  margin-left: -60px;
+  border-radius: 11px;
+  background: #6b7078;
+}
+
+/* Front */
+.front {
+  background: var(--charcoal);
+  color: #fff;
+  text-align: center;
+}
+
+.brand {
+  position: absolute;
+  top: 70px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.brand svg {
+  max-width: 380px;
+  max-height: 170px;
+}
+
+.dashed-logo {
+  margin-top: 40px;
+  padding: 16px 24px;
+  border: 2px dashed #4b5560;
+  border-radius: 8px;
+  color: #8b939c;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .04em;
+}
+
+.photo {
+  position: absolute;
+  top: 250px;
+  left: 145px;
+  width: 250px;
+  height: 270px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #d9dcdf;
+}
+
+.photo img, .photo svg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.front h1 {
+  position: absolute;
+  top: 540px;
+  left: 30px;
+  right: 30px;
+  font-size: 42px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+
+.role {
+  position: absolute;
+  top: 594px;
+  left: 30px;
+  right: 30px;
+  font-size: 24px;
+  color: #D5D9DE;
+}
+
+.meta {
+  position: absolute;
+  top: 638px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 44px;
+  font-size: 17px;
+}
+
+.meta dt {
+  color: var(--coral);
+  font-size: 13px;
+  letter-spacing: .12em;
+  margin-bottom: 2px;
+}
+
+.meta dd {
+  font-weight: 600;
+}
+
+.foot, .stripe {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 170px;
+}
+
+.foot {
+  background: var(--offwhite);
+  clip-path: polygon(0 50px, 76% 50px, 100% 10px, 100% 100%, 0 100%);
+}
+
+.stripe {
+  background: var(--coral);
+  clip-path: polygon(71% 50px, 76% 50px, 100% 10px, 100% 0);
+}
+
+.foot p {
+  position: absolute;
+  left: 40px;
+  top: 78px;
+  text-align: left;
+  color: var(--charcoal);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: .3em;
+  line-height: 1.55;
+}
+
+/* Helios logo */
+.helios {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: var(--coral);
+  font-family: 'Josefin Sans', sans-serif;
+}
+
+.helios svg {
+  width: 96px;
+}
+
+.helios b {
+  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: .32em;
+  margin-right: -.32em;
+}
+
+.helios span {
+  font-size: 17px;
+  letter-spacing: .42em;
+  margin-right: -.42em;
+  margin-top: -4px;
+}
+
+/* Back */
+.back {
+  background: var(--navy);
+  color: #fff;
+  padding: 0 48px;
+}
+
+.back::before {
+  content: "";
+  position: absolute;
+  top: -120px;
+  right: -160px;
+  width: 420px;
+  height: 420px;
+  background: #fff;
+  opacity: .03;
+  transform: rotate(45deg);
+}
+
+.back .gold {
+  position: absolute;
+  right: -40px;
+  bottom: 120px;
+  width: 190px;
+  height: 34px;
+  background: linear-gradient(90deg, #E9B23E, #B57A1C);
+  transform: rotate(-52deg);
+}
+
+.dynamis {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 80px;
+  --d: #fff;
+}
+
+.dynamis .mark {
+  width: 112px;
+}
+
+.dynamis .word {
+  font-weight: 600;
+  font-size: 40px;
+  letter-spacing: .14em;
+  margin-right: -.14em;
+  line-height: 1;
+}
+
+.dynamis .word svg {
+  height: .7em;
+  margin-right: .14em;
+  vertical-align: 0;
+}
+
+.tag {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: .24em;
+  margin: 18px -20px 0;
+  color: #D5D9DE;
+}
+
+.contact {
+  margin-top: 44px;
+  font-size: 19px;
+  line-height: 1.45;
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 18px 16px;
+  align-items: start;
+}
+
+.contact svg {
+  width: 22px;
+  fill: #fff;
+  margin-top: 3px;
+}
+
+.contact .addr {
+  margin-bottom: 10px;
+}
+
+.back hr {
+  border: 0;
+  border-top: 1px solid #ffffff40;
+  margin: 28px 0 22px;
+}
+
+.legal {
+  font-size: 16px;
+  line-height: 1.45;
+  color: #D5D9DE;
+}
+
+.legal + .legal {
+  margin-top: 14px;
+}
+
+/* Export-only state: hide the slot guide and square off the corners,
+   per "leave out the slot guide and the rounded corners in exports; they
+   appear in the preview only." */
+.card.exporting {
+  border-radius: 0;
+}
+
+.card.exporting .slot {
+  display: none;
+}

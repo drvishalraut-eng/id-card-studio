@@ -25,6 +25,7 @@ func (s *Server) registerEmployeeRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /employees/import", s.Auth.RequireAuth(http.HandlerFunc(s.handleImportEmployees)))
 	mux.Handle("POST /employees/{id}/client", s.Auth.RequireAuth(http.HandlerFunc(s.handleMapClient)))
 	mux.Handle("POST /employees/{id}/photo", s.Auth.RequireAuth(http.HandlerFunc(s.handleUploadPhoto)))
+	mux.Handle("GET /employees/{id}/photo", s.Auth.RequireAuth(http.HandlerFunc(s.handleGetPhoto)))
 }
 
 func (s *Server) handleListEmployees(w http.ResponseWriter, r *http.Request) {
@@ -191,6 +192,23 @@ func (s *Server) handleUploadPhoto(w http.ResponseWriter, r *http.Request) {
 	}
 	s.logAction(r, actor.Username, "photo_uploaded", e.EmployeeID)
 	writeJSON(w, http.StatusOK, e)
+}
+
+// handleGetPhoto serves an employee's uploaded photo. id is already
+// restricted to employees.IDPattern (no path separators), so joining it
+// straight onto PhotosDir cannot escape that directory.
+func (s *Server) handleGetPhoto(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	e, found, err := s.Employees.Store.Find(id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not load employee: "+err.Error())
+		return
+	}
+	if !found || e.Photo == "" {
+		writeError(w, http.StatusNotFound, "this employee has no photo")
+		return
+	}
+	http.ServeFile(w, r, filepath.Join(s.Info.PhotosDir, e.Photo))
 }
 
 func formFloat(r *http.Request, field string, min, max float64) (float64, error) {

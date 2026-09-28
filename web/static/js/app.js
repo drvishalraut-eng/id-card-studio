@@ -4,6 +4,8 @@ import { renderTopbar, wireTopbar } from './topbar.js';
 import { startPresence, stopPresence, setStep } from './presence.js';
 import { renderUsers } from './users.js';
 import { renderActivity } from './activity.js';
+import { renderWizard } from './wizard.js';
+import { escapeHtml } from './util.js';
 
 const root = document.getElementById('app');
 let currentUser = null;
@@ -52,7 +54,7 @@ function renderView(path, view) {
   } else if (path === '/activity') {
     renderActivity(view);
   } else {
-    view.innerHTML = '<p class="placeholder">Wizard coming soon.</p>';
+    renderWizard(view);
   }
 }
 
@@ -63,7 +65,7 @@ async function boot() {
   try {
     status = await api.get('/setup');
   } catch (err) {
-    root.innerHTML = `<p class="placeholder">${err.message}</p>`;
+    root.innerHTML = `<p class="placeholder">${escapeHtml(err.message)}</p>`;
     return;
   }
 

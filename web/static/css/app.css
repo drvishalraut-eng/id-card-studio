@@ -230,6 +230,79 @@ textarea:focus-visible,
   color: var(--text-muted);
 }
 
+/* Wizard */
+.wizard-panel {
+  width: 520px;
+  flex-shrink: 0;
+  background: var(--panel-bg);
+  overflow: auto;
+  padding: 24px;
+}
+
+.step-bar {
+  display: flex;
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 20px;
+}
+
+.step-bar .step {
+  flex: 1;
+  text-align: center;
+  padding: 8px 4px;
+  border-radius: 6px;
+  background: #e7e7e4;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.step-bar .step.active {
+  background: var(--charcoal);
+  color: #fff;
+}
+
+.wizard-preview {
+  flex: 1;
+  min-width: 0;
+  background: var(--preview-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+  overflow: auto;
+}
+
+.preview-scale-wrap {
+  overflow: hidden;
+}
+
+.preview-pair {
+  display: flex;
+  gap: 24px;
+  transform-origin: top left;
+}
+
+.preview-nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: #fff;
+}
+
+.preview-nav .btn {
+  min-width: 44px;
+}
+
+.preview-counter {
+  font-size: 13px;
+  color: #D5D9DE;
+  white-space: nowrap;
+}
+
 /* Users / Activity pages */
 .page {
   flex: 1;
