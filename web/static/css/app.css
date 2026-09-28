@@ -646,3 +646,67 @@ textarea:focus-visible,
   margin-top: 16px;
   width: 100%;
 }
+
+/* Under the hood panel */
+.under-the-hood-mount {
+  margin-top: 24px;
+}
+
+.under-the-hood {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.under-the-hood summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.uth-body {
+  margin-top: 10px;
+  font-size: 12px;
+}
+
+.uth-count {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.uth-users {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.uth-users li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--text-muted);
+}
+
+.uth-users li strong {
+  color: var(--charcoal);
+}
+
+.uth-server {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 10px;
+  margin: 0;
+}
+
+.uth-server dt {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.uth-server dd {
+  margin: 0;
+  word-break: break-all;
+}

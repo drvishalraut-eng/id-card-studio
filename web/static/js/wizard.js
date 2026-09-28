@@ -8,17 +8,24 @@ import { renderStep1 } from './step1.js';
 import { renderStep2 } from './step2.js';
 import { renderStep3 } from './step3.js';
 import { renderStep4 } from './step4.js';
+import { createUnderTheHood } from './underthehood.js';
 
 const STEPS = ['Client', 'Employees', 'Photos', 'Export'];
 
-// currentPreview tracks the one live preview instance so it can be
-// destroyed (see preview.js) before a new one replaces it.
+// currentPreview and currentUnderTheHood track the one live instance of
+// each so they can be destroyed (see preview.js/underthehood.js) before a
+// new one replaces it.
 let currentPreview = null;
+let currentUnderTheHood = null;
 
 export async function renderWizard(view, user) {
   if (currentPreview) {
     currentPreview.destroy();
     currentPreview = null;
+  }
+  if (currentUnderTheHood) {
+    currentUnderTheHood.destroy();
+    currentUnderTheHood = null;
   }
 
   view.innerHTML = `
@@ -27,6 +34,7 @@ export async function renderWizard(view, user) {
         ${STEPS.map((label, i) => `<li><button type="button" class="step-btn" data-step="${i}">${i + 1}. ${label}</button></li>`).join('')}
       </ol>
       <div class="step-content"></div>
+      <div class="under-the-hood-mount"></div>
     </aside>
     <section class="wizard-preview"></section>
   `;
@@ -34,6 +42,7 @@ export async function renderWizard(view, user) {
   const stepBar = view.querySelector('.step-bar');
   const stepContent = view.querySelector('.step-content');
   currentPreview = createPreview(view.querySelector('.wizard-preview'));
+  currentUnderTheHood = createUnderTheHood(view.querySelector('.under-the-hood-mount'), user.username);
 
   let employeeList = [];
   let clients = [];

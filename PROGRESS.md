@@ -19,7 +19,7 @@
 16. [x] Wizard Step 2: Excel/CSV import, the Needs attention mapping, the add-employee form, search and filter.
 17. [x] Wizard Step 3: photo queue, upload and resize, crop sliders and drag, save and next.
 18. [x] Wizard Step 4: filters, grouped selection with shift-range, and PDF/ZIP export with progress.
-19. [ ] Under the hood panel.
+19. [x] Under the hood panel.
 20. [ ] `scripts/build.*`: cross-compile and test all four binaries.
 21. [ ] End-to-end smoke test, README (setup, build, running on a LAN, backup by copying `data/`, the Windows OneDrive Desktop note, troubleshooting), cleanup pass, and the Handover section.
 
@@ -108,6 +108,9 @@
 - Selection is **not** cleared after a successful export. Reason: spec explicitly says "the selection survives filter changes," and clearing it specifically after export (but not after any other filter change) would be an inconsistent special case; a just-exported row simply drops out of view under the default "Not exported" status filter instead, which is a more natural signal that it's done.
 - **Verified with a real jsdom DOM-interaction test** (20 assertions, not just `node --check`) covering: default "Not exported" filtering, Select shown/Clear, singular/plural export-button labeling, status/client/month filters (including that the month dropdown is newest-first from real fixed-English labels), the no-photo warning, the exact sanitized filename shown per row, shift-click range selection spanning a client-group boundary, and group-header select/deselect. This surfaced and fixed two *test* bugs along the way (a stale DOM reference after `innerHTML` replacement, and manually pre-setting `.checked` before dispatching a click that also toggles it) rather than real `step4.js` bugs — worth noting since it shows the kind of jsdom footgun this session hit repeatedly when hand-verifying interactive code without a real browser.
 - `cardexport.exportFilename`'s sanitization was cross-checked byte-for-byte against `internal/export.SanitizeFilenamePart`'s own Go unit test case, confirming the client and server agree on the exact filename shown to the user vs. the one the server actually saves under.
+- The "Under the hood" panel (`underthehood.js`) reuses the existing `GET /api/server-info` (task 6) verbatim — no backend changes needed this task, only a frontend consumer. It's a native `<details>/<summary>` (real, keyboard-operable, no ARIA reinvention needed) polling every 15s to match the presence heartbeat cadence, plus an immediate refresh on open via the `toggle` event so expanding it never shows a stale snapshot.
+- "Current step" shown per connected user is the top-level route (`wizard`/`users`/`activity`) that `app.js` already feeds to `presence.setStep()` — not which of the 4 Wizard steps they're on. Spec says "current step" without specifying that granularity; threading per-wizard-step tracking through all four step modules just for this display would be a cross-cutting change for a "nice to have" level of detail the spec doesn't clearly ask for.
+- **Verified with a real jsdom test** (13 assertions) that caught a genuine, useful surprise: setting `<details>.open = true` programmatically already fires a native `toggle` event in jsdom (matching current browser/spec behavior) — an initial test draft that also manually dispatched a second `toggle` event was double-firing the refresh and looked like a bug in `underthehood.js` until traced down; the shipped code was correct all along, only the test was redundant. Left as a documented example of the jsdom footguns this session hit while substituting for a real browser.
 
 ## Blockers
 (none yet)
