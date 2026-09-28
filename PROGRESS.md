@@ -20,7 +20,7 @@
 17. [x] Wizard Step 3: photo queue, upload and resize, crop sliders and drag, save and next.
 18. [x] Wizard Step 4: filters, grouped selection with shift-range, and PDF/ZIP export with progress.
 19. [x] Under the hood panel.
-20. [ ] `scripts/build.*`: cross-compile and test all four binaries.
+20. [x] `scripts/build.*`: cross-compile and test all four binaries.
 21. [ ] End-to-end smoke test, README (setup, build, running on a LAN, backup by copying `data/`, the Windows OneDrive Desktop note, troubleshooting), cleanup pass, and the Handover section.
 
 ## Decisions
@@ -111,6 +111,8 @@
 - The "Under the hood" panel (`underthehood.js`) reuses the existing `GET /api/server-info` (task 6) verbatim — no backend changes needed this task, only a frontend consumer. It's a native `<details>/<summary>` (real, keyboard-operable, no ARIA reinvention needed) polling every 15s to match the presence heartbeat cadence, plus an immediate refresh on open via the `toggle` event so expanding it never shows a stale snapshot.
 - "Current step" shown per connected user is the top-level route (`wizard`/`users`/`activity`) that `app.js` already feeds to `presence.setStep()` — not which of the 4 Wizard steps they're on. Spec says "current step" without specifying that granularity; threading per-wizard-step tracking through all four step modules just for this display would be a cross-cutting change for a "nice to have" level of detail the spec doesn't clearly ask for.
 - **Verified with a real jsdom test** (13 assertions) that caught a genuine, useful surprise: setting `<details>.open = true` programmatically already fires a native `toggle` event in jsdom (matching current browser/spec behavior) — an initial test draft that also manually dispatched a second `toggle` event was double-firing the refresh and looked like a bug in `underthehood.js` until traced down; the shipped code was correct all along, only the test was redundant. Left as a documented example of the jsdom footguns this session hit while substituting for a real browser.
+- `scripts/build.sh`/`.ps1` run `go vet` and `go test ./...` first and abort on any failure, then cross-compile into `dist/<goos>-<goarch>/idcard(.exe)` — one self-contained, ready-to-copy portable folder per platform (matching the runtime layout section's flat `idcard(.exe)` + `config.json` + `data/` next to each other), rather than a single `dist/` folder with OS-suffixed filenames. Both scripts were actually run this session (not just written): all four cross-compiles (`windows/amd64`, `darwin/arm64`, `darwin/amd64`, `linux/amd64`) succeed with `CGO_ENABLED=0`, and the native `windows/amd64` output was smoke-tested by copying it to a clean scratch folder and hitting `/` and `/api/setup` on it directly — a real end-to-end check that the portable, from-any-folder design actually works, not just that compilation succeeds.
+- "test all four binaries" is interpreted as running the full Go test suite as a build gate (via `go test ./...`) rather than literally executing each cross-compiled binary — three of the four target platforms (darwin/arm64, darwin/amd64, linux/amd64) can't be executed on this Windows development machine at all. The one binary that *can* run natively here (windows/amd64) was smoke-tested for real, as above.
 
 ## Blockers
 (none yet)
