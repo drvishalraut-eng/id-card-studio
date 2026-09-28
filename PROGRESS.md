@@ -341,3 +341,63 @@ and all four platform binaries rebuild successfully via
 `scripts/build.sh`. Every piece of Step 3 and Step 4 described in
 CLAUDE.md has now been exercised with a real mouse and a real upload,
 not just read.
+
+**Caveat on the export claim above:** "both produced valid 2-page
+PDFs" was verified with `file` (page count and PDF-ness) but the
+actual rendered image inside each PDF was not looked at — an
+incomplete check that missed a real rendering bug, below.
+
+## Post-handover: malformed back-card logo in the export (2026-09-28, user-reported)
+
+The user asked directly: "export file is wrong, have you checked it?
+the dynamis logo is malformed in export" — a fair catch, since the
+prior entry's export verification stopped at "is this a valid 2-page
+PDF" and never rendered the PDF's own image to look at it. Doing that
+(via PyMuPDF, rendering each exported page to PNG) showed the back
+card's white "D" mark rendering solid black/near-invisible against
+the navy background, everywhere the card is exported — the live
+in-browser preview was never affected and always showed it correctly,
+which is exactly why this survived every prior visual check in this
+project.
+
+**Root cause:** `reference/index.html`'s own DYNAMIS mark sets its
+white fill via a CSS custom property (`.dynamis{--d:#fff}` in
+`card.css`, referenced as `style="fill:var(--d)"` on two `<path>`s in
+`card.js`). That resolves fine in the live DOM, where `--d` is
+inherited from the ancestor `.dynamis` element in the normal CSS
+cascade. But the export path (`cardexport.js`) rasterizes each card
+with `window.htmlToImage.toCanvas()`, which works by cloning the
+subtree, inlining computed styles, and serializing the result into an
+isolated `data:image/svg+xml` document containing a `<foreignObject>`
+— confirmed directly by reading the actual network request it issues.
+Inside that isolated document, `--d` is no longer defined anywhere
+(the custom property wasn't carried across the serialization), so
+`var(--d)` resolves to nothing and `fill` falls back to its SVG
+default of black.
+
+**Fix:** replaced `style="fill:var(--d)"` with a literal `fill="#fff"`
+attribute on both paths in `dynamisMarkSvg`/`dynamisASvg`
+(`card.js`), and removed the now-unused `--d: #fff` declaration from
+`card.css`. The color was always a fixed, unconditional value (never
+overridden anywhere) — the custom-property indirection was serving no
+purpose and only reintroducing this on the next such property, if any,
+would be a mistake. No Go tests apply here (this is a pure
+CSS/rendering bug the Go suite can't see); verified instead by
+re-running a real export through the browser and rendering the
+resulting PDF's pages to PNG with PyMuPDF to look at the actual pixels
+— the "D" is now correctly white with the gold chevron, matching
+`reference/index.html`, and the front side (photo, Helios logo,
+silhouette placeholder for a photo-less employee) was re-checked the
+same way and is unaffected.
+
+**Lesson for future export-correctness checks in this project:**
+`file <pdf>` and a page count are not enough to catch a rendering bug
+in an exported PDF, because the PDF is just a JPEG glued to a page —
+the actual image content has to be decoded and looked at. Reader
+tools with no PDF renderer available in this environment: install
+`pymupdf` via pip (`python -m pip install --user pymupdf`), open with
+`fitz`/`pymupdf`, `page.get_pixmap(dpi=...)`, `pix.save(path)`, then
+view the PNG. On Windows, remember the native Python invoked from
+git-bash needs a real Windows path (or a `pathlib.Path.cwd()`-relative
+one), not a `/tmp/...`-style git-bash path — see the same gotcha noted
+in the previous entry for saving the test photo.

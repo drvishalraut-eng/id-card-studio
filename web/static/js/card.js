@@ -135,16 +135,20 @@ const BACK_CONTENT = {
   ],
 };
 
+// The white fill is a literal attribute, not the CSS custom property the
+// reference markup uses (--d, set once and never overridden): html-to-image
+// clones this SVG into an isolated document to rasterize it for export, and
+// a var(--d) reference doesn't resolve there, silently rendering black.
 function dynamisMarkSvg(gradId) {
   return `<svg class="mark" viewBox="0 0 112 100">
-    <path style="fill:var(--d)" d="M0 0H62A50 50 0 0 1 62 100H30L43 82H62A32 32 0 0 0 62 18H18Z"/>
+    <path fill="#fff" d="M0 0H62A50 50 0 0 1 62 100H30L43 82H62A32 32 0 0 0 62 18H18Z"/>
     <path fill="url(#${gradId})" d="M14 28H36L60 52L26 100H4L38 52Z"/>
   </svg>`;
 }
 
 function dynamisASvg(gradId) {
   return `<svg viewBox="0 0 40 36">
-    <path style="fill:var(--d)" d="M16 0H24L40 36H33L20 7L7 36H0Z"/>
+    <path fill="#fff" d="M16 0H24L40 36H33L20 7L7 36H0Z"/>
     <path fill="url(#${gradId})" d="M20 22L26 36H14Z"/>
   </svg>`;
 }
