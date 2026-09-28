@@ -1,12 +1,13 @@
 import { escapeHtml } from './util.js';
 
-// Renders the charcoal top bar: brand mark, Wizard | Users | Activity tabs
-// (Users only for an admin), the signed-in user's name and role, and Sign
-// out.
+// Renders the charcoal top bar: brand mark, Wizard | Users | Activity | Data
+// tabs (Users and Data only for an admin), the signed-in user's name and
+// role, and Sign out.
 export function renderTopbar(user, activePath) {
   const tabs = [{ path: '/wizard', label: 'Wizard' }];
   if (user.role === 'admin') tabs.push({ path: '/users', label: 'Users' });
   tabs.push({ path: '/activity', label: 'Activity' });
+  if (user.role === 'admin') tabs.push({ path: '/data', label: 'Data' });
 
   const navHtml = tabs
     .map((t) => `<a href="#${t.path}" class="${t.path === activePath ? 'active' : ''}">${t.label}</a>`)

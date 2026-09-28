@@ -60,6 +60,7 @@ func (s *Server) Handler() http.Handler {
 	s.registerClientRoutes(api)
 	s.registerEmployeeRoutes(api)
 	s.registerExportRoutes(api)
+	s.registerBackupRoutes(api)
 
 	return limitBody(auth.RequireXRequestedWith(api))
 }
@@ -81,9 +82,16 @@ func (s *Server) logAction(r *http.Request, username, action, target string) {
 	}
 }
 
+// limitBody caps every request body at MaxRequestBody, except a backup
+// import: it's a whole data/ folder, mostly photos, which routinely exceeds
+// that general-purpose limit (see maxBackupImportSize in backup_handlers.go).
 func limitBody(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		r.Body = http.MaxBytesReader(w, r.Body, MaxRequestBody)
+		limit := int64(MaxRequestBody)
+		if r.Method == http.MethodPost && r.URL.Path == "/backup/import" {
+			limit = maxBackupImportSize
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, limit)
 		next.ServeHTTP(w, r)
 	})
 }

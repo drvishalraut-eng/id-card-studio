@@ -401,3 +401,96 @@ view the PNG. On Windows, remember the native Python invoked from
 git-bash needs a real Windows path (or a `pathlib.Path.cwd()`-relative
 one), not a `/tmp/...`-style git-bash path — see the same gotcha noted
 in the previous entry for saving the test photo.
+
+## Post-handover: Data management (export/import/clear backup) (2026-09-28, user-requested feature)
+
+The user asked for a data management option, admin-only, "3 choices,
+export backup, import backup, clear data. simple. all data will be
+imported / exported as zip." This is new scope beyond CLAUDE.md's
+original 21 tasks, so every design choice below was made per rule 5
+("when the spec is silent, choose the simplest option that fits the
+spec... and keep going") rather than asked about, and is recorded here
+in the same spirit as the `## Decisions` list above.
+
+**What "all data" means:** exactly the `data/` folder's own contents —
+`employees.json`, `clients.json`, `users.json`, `activity.jsonl`,
+`logos/*.svg`, `photos/*.jpg` — and nothing from `config.json` (port,
+export folder). Those are machine/deployment settings, not something a
+restored-elsewhere backup should ever overwrite.
+
+**New `internal/backup` package** (`archive/zip`, stdlib only, matching
+the "Go 1.24+, standard library only" stack rule) provides three pure
+functions operating on a `Paths{Root, Logos, Photos}` — the same three
+locations `main.go` already computes, so the server layer just wires
+existing fields together (`Info.DataDir`, `Info.PhotosDir`,
+`Clients.LogosDir`) rather than threading a new struct through the
+whole app:
+- `Write` streams a zip of every data file that exists (a fresh install
+  with nothing yet produces an empty zip, not an error).
+- `Import` validates that `employees.json`, `clients.json` and
+  `users.json` are present and individually valid JSON *before writing
+  anything* — a bad upload changes nothing — then **replaces** every
+  file and every logo/photo with exactly what the zip contains (not a
+  merge): anything not in the zip is removed from disk, matching
+  "restore a backup" semantics rather than a partial import. Zip entries
+  under `logos/`/`photos/` are only accepted as a bare filename (no `/`
+  or `\` in the remainder after the prefix), which also blocks a
+  `photos/../../evil.jpg`-style path-traversal entry in a corrupt or
+  hostile zip.
+- `Clear` resets the three JSON files to `[]`, deletes
+  `activity.jsonl`, and empties `logos/`/`photos/` — a full return to
+  fresh-install state. The handler then calls the existing
+  `clients.Manager.SeedHelios()` afterwards, the same seed `main.go`
+  runs on first boot, so clearing looks exactly like a new install
+  rather than a client-less broken one.
+
+**Sessions:** `auth.SessionManager` gained a `Clear()` method. Both
+Import and Clear call it: `users.json` just changed wholesale (to a
+different set of accounts, or to nothing), so every existing session
+token — including the admin who triggered the action — is now
+meaningless and is invalidated immediately, forcing a fresh sign-in
+against whatever `users.json` says now. This is the only way to avoid
+a stale session token coincidentally still "working" against an
+unrelated restored account.
+
+**Body-size limit:** the shared `limitBody` middleware caps every
+request at the spec's 10 MB, which a whole-`data/`-folder backup
+(mostly photos) routinely exceeds. `POST /backup/import` is special-
+cased to a 500 MB ceiling instead of being exempted outright, mirroring
+how task 8's photo upload already has its own smaller cap *within* the
+general one — bounded, but big enough for a realistic install.
+
+**Frontend:** a new Admin-only "Data" tab (`web/static/js/data.js`,
+wired into `topbar.js` and `app.js` exactly like the existing Users
+tab) with three sections. Export is one button — no confirmation, since
+it's read-only. Import and Clear both require an explicit,
+un-skippable confirmation step before their button even enables (a
+ticked "I understand this replaces all current data" checkbox for
+Import; typing the literal word `CLEAR` for Clear) rather than a native
+`confirm()` dialog — this app doesn't use browser-native dialogs
+anywhere else, and a typed/ticked confirmation is harder to fire by an
+accidental double-click than a dialog most people reflexively accept.
+Both reload the page on success (rather than trying to patch the SPA's
+in-memory state back to "signed out"), since the server just
+invalidated every session and a hard reload is the simplest way to
+land back on a correct login/setup screen.
+
+**Verified with a real, complete round trip through a live browser**
+(not just the Go tests below): seeded an admin and one employee,
+clicked Export backup and confirmed the real downloaded zip's contents
+byte-for-byte, clicked Clear all data (typing `CLEAR`) and confirmed on
+disk that all three JSON files went to `[]`, `activity.jsonl` was
+removed, and Helios was reseeded — then re-created an admin, uploaded
+the earlier downloaded zip via Import backup, and confirmed the
+*original* admin's username/PIN and the original employee record were
+both back exactly as they were, proving the export→clear→import cycle
+round-trips real data through a real file, not just in-memory
+structures. Also covered by 8 new `internal/backup` tests (round-trip
+contents, missing-required-file rejection, invalid-JSON rejection,
+path-traversal rejection, replace-not-merge, fresh-install empty zip),
+2 new `auth.SessionManager` tests, and 8 new server-handler tests
+(admin-only on all three endpoints, zip content-type and filename,
+non-zip upload rejection, sessions invalidated after Import/Clear, a
+rejected Import leaving the existing session and data untouched). Full
+suite: 152 → 163 tests, all passing; `go vet` clean; all four platform
+binaries rebuild.

@@ -65,3 +65,13 @@ func (m *SessionManager) Delete(token string) {
 	defer m.mu.Unlock()
 	delete(m.sessions, token)
 }
+
+// Clear ends every active session at once — used after a bulk operation
+// that replaces or wipes users.json (importing or clearing a backup), since
+// an existing token's username might now belong to a different account or
+// no account at all.
+func (m *SessionManager) Clear() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.sessions = make(map[string]session)
+}

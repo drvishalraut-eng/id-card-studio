@@ -89,6 +89,11 @@ textarea:focus-visible,
   cursor: not-allowed;
 }
 
+.btn.danger {
+  background: #9b3d3d;
+  border-color: #9b3d3d;
+}
+
 /* Form fields */
 .field {
   display: flex;
@@ -115,6 +120,25 @@ textarea:focus-visible,
 
 .error-text {
   color: #9b3d3d;
+  font-size: 13px;
+  min-height: 1.2em;
+}
+
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  font-size: 13px;
+}
+
+.checkbox-field input {
+  width: 18px;
+  height: 18px;
+}
+
+.success-text {
+  color: #2e7d32;
   font-size: 13px;
   min-height: 1.2em;
 }

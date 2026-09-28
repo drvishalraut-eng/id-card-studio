@@ -4,6 +4,7 @@ import { renderTopbar, wireTopbar } from './topbar.js';
 import { startPresence, stopPresence, setStep } from './presence.js';
 import { renderUsers } from './users.js';
 import { renderActivity } from './activity.js';
+import { renderData } from './data.js';
 import { renderWizard } from './wizard.js';
 import { escapeHtml } from './util.js';
 
@@ -37,7 +38,7 @@ function renderShell() {
   if (!currentUser) return;
   const path = currentPath();
 
-  if (path === '/users' && currentUser.role !== 'admin') {
+  if ((path === '/users' || path === '/data') && currentUser.role !== 'admin') {
     location.hash = '/wizard';
     return;
   }
@@ -53,6 +54,8 @@ function renderView(path, view) {
     renderUsers(view);
   } else if (path === '/activity') {
     renderActivity(view);
+  } else if (path === '/data') {
+    renderData(view);
   } else {
     renderWizard(view, currentUser);
   }

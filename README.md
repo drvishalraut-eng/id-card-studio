@@ -82,11 +82,19 @@ computers; every write to the shared data is mutex-protected and atomic.
 
 ## Backing up
 
-Everything the app knows — clients, employees, users, activity log,
-client logos, employee photos — lives under the `data/` folder next to
-the binary. To back up or move the app to another machine, just copy the
-whole `data/` folder (and `config.json`, if you want to keep the same
-settings). There's no database to export.
+The easiest way: sign in as an Admin, open the **Data** tab, and click
+**Export backup** — it downloads every client, employee, user, photo and
+client logo as one zip file. The same page can **Import backup** (replaces
+everything with a chosen backup's contents and signs everyone out) or
+**Clear all data** (wipes everything back to a fresh install, reseeding
+Helios). Both are destructive and ask for a confirmation first.
+
+Everything the app knows lives under the `data/` folder next to the
+binary, so you can also back up or move the app to another machine by
+copying that folder directly (and `config.json`, if you want to keep the
+same settings) — useful if you'd rather keep `config.json`'s port and
+export-folder settings, which the in-app export doesn't include. There's
+no database to export.
 
 ```
 ID-Card-Studio/
@@ -146,10 +154,10 @@ After 5 failed PIN attempts, an account locks for 5 minutes. An Admin
 can also reset that user's PIN from the Users page at any time, which
 clears the lockout immediately.
 
-**I don't see the Users or Activity tab.**
-The Users page is Admin-only. Activity is visible to everyone, Users
-only to admins — ask an existing Admin to add your account with the
-Admin role, or to check the Users page for your account's role.
+**I don't see the Users, Data or Activity tab.**
+Activity is visible to everyone; Users and Data are Admin-only — ask an
+existing Admin to add your account with the Admin role, or to check the
+Users page for your account's role.
 
 **Cards look wrong / a client's logo doesn't show.**
 Client logos must be clean SVG (no `<text>`, no embedded images or

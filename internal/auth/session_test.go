@@ -47,6 +47,24 @@ func TestSessionExpires(t *testing.T) {
 	}
 }
 
+func TestSessionClearEndsEveryone(t *testing.T) {
+	sm := NewSessionManager()
+	tokenA, _ := sm.Create("alice")
+	tokenB, _ := sm.Create("bea")
+
+	sm.Clear()
+
+	if _, ok := sm.Username(tokenA); ok {
+		t.Fatal("expected alice's session to be gone after Clear")
+	}
+	if _, ok := sm.Username(tokenB); ok {
+		t.Fatal("expected bea's session to be gone after Clear")
+	}
+	if newToken, err := sm.Create("carl"); err != nil || newToken == "" {
+		t.Fatalf("expected Clear to leave the manager usable, got token=%q err=%v", newToken, err)
+	}
+}
+
 func TestSessionTokensAreUnique(t *testing.T) {
 	sm := NewSessionManager()
 	seen := make(map[string]bool)
