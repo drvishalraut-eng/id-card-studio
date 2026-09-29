@@ -1,3 +1,19 @@
+<p align="center">
+  <img src="docs/images/card-front.webp" width="220" alt="Sample ID card">
+</p>
+
+<h1 align="center">ID Card Studio</h1>
+<p align="center">Print-ready ID cards, made on your own network.</p>
+
+<p align="center">
+  <a href="https://drvishalraut-eng.github.io/id-card-studio/">Website</a> ·
+  <a href="https://github.com/drvishalraut-eng/id-card-studio/releases/latest">Download</a>
+</p>
+
+![Wizard](docs/images/wizard.webp)
+
+---
+© White Coat Foundry
 <img src="web/assets/brand/wcf-logo-color.svg" width="120" height="120" alt="White Coat Foundry">
 
 # ID Card Studio
@@ -8,8 +24,8 @@ PDFs.
 
 The whole app is a single self-contained binary: Go on the backend
 (standard library only), vanilla JS/HTML/CSS on the frontend (no build
-step), embedded via `go:embed`. Copy the binary anywhere — a laptop, a
-shared drive, a USB stick — and run it.
+step), embedded via `go:embed`. Copy the binary anywhere â€” a laptop, a
+shared drive, a USB stick â€” and run it.
 
 ## Quick start
 
@@ -40,7 +56,7 @@ shared drive, a USB stick — and run it.
 ```
 
 Both scripts run `go vet` and the full test suite first, then cross-compile
-into `dist/<os>-<arch>/idcard(.exe)` — one ready-to-copy folder per
+into `dist/<os>-<arch>/idcard(.exe)` â€” one ready-to-copy folder per
 platform:
 
 - `dist/windows-amd64/idcard.exe`
@@ -49,6 +65,20 @@ platform:
 - `dist/linux-amd64/idcard`
 
 Copy the whole folder for your platform wherever you want to run it from.
+
+### macOS: building a .dmg
+
+`scripts/build.sh` only produces raw binaries. If you want a `.dmg` to
+hand to a Mac user, run this **on a Mac** (it shells out to `hdiutil`,
+which only exists on macOS):
+
+```sh
+./scripts/make_dmg.sh
+```
+
+This builds both `dist/darwin-arm64` and `dist/darwin-amd64` if they're
+missing, then packages them into `dist/ID-Card-Studio.dmg` with a
+"Read me first.txt" covering the Gatekeeper step below.
 
 ### Re-vendoring frontend libraries
 
@@ -67,7 +97,7 @@ python3 scripts/make_template.py
 On start, the server prints every LAN URL it's reachable at (one per
 network interface) and opens the host machine's browser to it
 automatically. Anyone else on the same network can open one of those
-printed URLs (e.g. `http://192.168.1.42:8080`) directly — no installation
+printed URLs (e.g. `http://192.168.1.42:8080`) directly â€” no installation
 needed on their end, just a browser.
 
 `config.json` (created on first run, next to the binary) controls the
@@ -83,7 +113,7 @@ computers; every write to the shared data is mutex-protected and atomic.
 ## Backing up
 
 The easiest way: sign in as an Admin, open the **Data** tab, and click
-**Export backup** — it downloads every client, employee, user, photo and
+**Export backup** â€” it downloads every client, employee, user, photo and
 client logo as one zip file. The same page can **Import backup** (replaces
 everything with a chosen backup's contents and signs everyone out) or
 **Clear all data** (wipes everything back to a fresh install, reseeding
@@ -92,28 +122,28 @@ Helios). Both are destructive and ask for a confirmation first.
 Everything the app knows lives under the `data/` folder next to the
 binary, so you can also back up or move the app to another machine by
 copying that folder directly (and `config.json`, if you want to keep the
-same settings) — useful if you'd rather keep `config.json`'s port and
+same settings) â€” useful if you'd rather keep `config.json`'s port and
 export-folder settings, which the in-app export doesn't include. There's
 no database to export.
 
 ```
 ID-Card-Studio/
-├── idcard(.exe)
-├── config.json
-└── data/
-    ├── clients.json
-    ├── employees.json
-    ├── users.json
-    ├── activity.jsonl
-    ├── logos/<client_id>.svg
-    └── photos/<employee_id>.jpg
+â”œâ”€â”€ idcard(.exe)
+â”œâ”€â”€ config.json
+â””â”€â”€ data/
+    â”œâ”€â”€ clients.json
+    â”œâ”€â”€ employees.json
+    â”œâ”€â”€ users.json
+    â”œâ”€â”€ activity.jsonl
+    â”œâ”€â”€ logos/<client_id>.svg
+    â””â”€â”€ photos/<employee_id>.jpg
 ```
 
 ## A note for Windows users: OneDrive and the Desktop
 
 The default export folder is `~/Desktop/ID Cards`. On many Windows PCs,
-"Desktop" is actually redirected into OneDrive (Settings → Sync and
-back up → Manage backup, or an IT policy). That's usually fine, but it
+"Desktop" is actually redirected into OneDrive (Settings â†’ Sync and
+back up â†’ Manage backup, or an IT policy). That's usually fine, but it
 means:
 
 - Exported PDFs will sync to OneDrive automatically, which can be slow
@@ -155,15 +185,36 @@ can also reset that user's PIN from the Users page at any time, which
 clears the lockout immediately.
 
 **I don't see the Users, Data or Activity tab.**
-Activity is visible to everyone; Users and Data are Admin-only — ask an
+Activity is visible to everyone; Users and Data are Admin-only â€” ask an
 existing Admin to add your account with the Admin role, or to check the
 Users page for your account's role.
 
+**macOS says `"idcard" Not Opened` / "Apple could not verify... is free of
+malware".**
+This is Gatekeeper, not a bug â€” the binary isn't signed by an Apple
+Developer account. Click **Done**, then open **System Settings â†’ Privacy
+& Security**, scroll to the `"idcard" was blocked` line, and click **Open
+Anyway**. Run it again and confirm **Open** on the second dialog. (Or run
+`xattr -d com.apple.quarantine /path/to/idcard` in Terminal.) You only
+need to do this once per machine.
+
+**On macOS, double-clicking `idcard` opens it as garbled text (e.g. in
+TextEdit) instead of running it.**
+The executable permission was lost in transfer (common after downloading
+via a browser, WhatsApp, or an archive tool that doesn't preserve Unix
+permissions). Run it from Terminal instead:
+```sh
+cd /path/to/folder/with/idcard
+chmod +x idcard
+./idcard
+```
+After that, double-clicking it should work normally too.
+
 **Cards look wrong / a client's logo doesn't show.**
 Client logos must be clean SVG (no `<text>`, no embedded images or
-scripts — the app validates this on upload and explains what's wrong).
+scripts â€” the app validates this on upload and explains what's wrong).
 If reference/index.html is available, compare the card visually against
-it — that file is the approved layout reference.
+it â€” that file is the approved layout reference.
 
 ## License
 
